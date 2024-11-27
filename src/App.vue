@@ -8,9 +8,9 @@ const name = ref("");
 async function greet() {
   // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
   greetMsg.value = await invoke("greet", { name: name.value });
-  const result = await invoke('my_custom_command');
+  const result: string = await invoke('my_custom_command');
   console.log(result);
-
+  greetMsg.value = result;
 }
 </script>
 
