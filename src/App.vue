@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import { invoke } from "@tauri-apps/api/core";
+import { ElMessage } from 'element-plus' 
+
 
 const greetMsg = ref("");
 const name = ref("");
@@ -8,10 +10,79 @@ const name = ref("");
 async function greet() {
   // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
   greetMsg.value = await invoke("greet", { name: name.value });
-  const result: string = await invoke('my_custom_command');
+  const result: string = await invoke('my_custom_command',{ command: "git --version" });
+
   console.log(result);
   greetMsg.value = result;
+  ElMessage.success("ok")
 }
+
+
+async function enableGitProxy() {
+  try {
+    // 分开执行两个 git config 命令
+    await invoke('my_custom_command', { command: "git config --global http.proxy http://127.0.0.1:7897" });
+    await invoke('my_custom_command', { command: "git config --global https.proxy http://127.0.0.1:7897" });
+    
+    console.log("Proxy configured successfully");
+    ElMessage.success("代理已设置");
+  } catch (error) {
+    console.error("Error configuring proxy:", error);
+    ElMessage.error("Failed to configure proxy");
+  }
+}
+
+
+async function closeGitProxy() {
+  try {
+    // 分开执行两个 git config 命令来取消代理
+    await invoke('my_custom_command', { command: "git config --global --unset http.proxy" });
+    await invoke('my_custom_command', { command: "git config --global --unset https.proxy" });
+    
+    // 代理取消成功后，提示成功信息
+    ElMessage.success("代理已取消");
+  } catch (error) {
+    // 如果执行失败，捕获错误并显示失败信息
+    console.error("Error removing proxy:", error);
+    ElMessage.error("操作失败");
+  }
+}
+
+
+
+async function getGitProxyInfo() {
+  try {
+    // 获取 HTTP 和 HTTPS 代理配置
+    const result_http: string = await invoke('my_custom_command', { command: "git config --global --get http.proxy" });
+    const result_https: string = await invoke('my_custom_command', { command: "git config --global --get https.proxy" });
+    
+    // 打印结果到控制台
+    console.log(result_http);
+    console.log(result_https);
+
+
+    if (!result_http.trim() && !result_https.trim()) {
+      ElMessage.success("未设置代理")
+    } else {
+      ElMessage.success({
+     message: result_http + "<br>" + result_https,
+     dangerouslyUseHTMLString: true
+     });
+  }
+
+
+   
+
+    
+  } catch (error) {
+    // 如果发生错误，显示错误消息
+    ElMessage.error("An error occurred while retrieving the proxy configuration.");
+    console.error(error);
+  }
+}
+
+
+
 </script>
 
 <template>
@@ -27,6 +98,10 @@ async function greet() {
       <button type="submit">Greet</button>
     </form>
     <p>{{ greetMsg }}</p>
+
+      <button @click="enableGitProxy">git开启本地代理</button>
+      <button @click="closeGitProxy">git关闭本地代理</button>
+      <button @click="getGitProxyInfo">git查看代理</button>
   </main>
 </template>
 

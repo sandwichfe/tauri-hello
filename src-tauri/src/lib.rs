@@ -1,6 +1,6 @@
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-use std::process::Command; // 引入 `Command` 来执行外部命令
-
+use std::process::{Command, Stdio}; // 引入 `Command` 来执行外部命令
+use std::os::windows::process::CommandExt;
 
 
 #[tauri::command]
@@ -18,23 +18,31 @@ pub fn run() {
         .expect("error while running tauri application");
 }
 
+
 #[tauri::command]
-fn my_custom_command()-> String {
-  println!("I was invoked from JavaScript!");
-  
+fn my_custom_command(command: String) -> String {
+    // 构建命令行字符串，设置编码为 UTF-8
+    let full_command = format!(" {}", command);
 
-
-    // 调用 Windows 命令，比如执行 `echo` 命令
+    // 执行传入的命令
     let output = Command::new("cmd")
-        .args(&["/C", "chcp 65001 && ipconfig"])  // /C 代表运行后关闭命令窗口
-        .output()  // 获取命令的输出
+        .creation_flags(0x08000000)  // 隐藏运行cmd
+        .arg("/C")              // 让命令执行完后退出
+        .arg(&full_command)     // 借用 full_command 的引用
+        .stdout(Stdio::piped())  // 捕获输出
+        .output()               // 执行命令并获取输出
         .expect("Failed to execute command");
-    // 打印命令的输出
+
+    // 打印传入的命令（可选）
+    println!("Command Input: {}", full_command);
+
+    // 打印命令的输出（如果有输出）
     if !output.stdout.is_empty() {
         println!("Command Output: {}", String::from_utf8_lossy(&output.stdout));
     }
 
-    let ret = String::from_utf8_lossy(&output.stdout);
-
-    return String::from(ret);
+    // 返回命令的输出作为字符串
+    String::from_utf8_lossy(&output.stdout).to_string()
 }
+
+
