@@ -3,9 +3,14 @@ import { ref } from 'vue';
 import { ElButton, ElTable, ElTableColumn, ElInput, ElMessage } from 'element-plus';
 import { invoke } from '@tauri-apps/api/core';
 import { open } from '@tauri-apps/plugin-dialog';
+import { dirname } from '@tauri-apps/api/path';
 
 const currentPath = ref('');
 const fileList = ref([]);
+const pathHistory = ref<string[]>([]);
+
+// 检查是否可以返回上一级
+const canGoBack = () => pathHistory.value.length > 0;
 
 // 文件类型图标映射
 const getFileIcon = (isDir: boolean) => {
@@ -30,6 +35,8 @@ const selectFolder = async () => {
     
     if (selected) {
       currentPath.value = selected as string;
+    // 清空历史记录  
+    pathHistory.value = [];
       await openFolder(currentPath.value);
     }
   } catch (error) {
@@ -39,13 +46,29 @@ const selectFolder = async () => {
 };
 
 // 打开文件夹
-const openFolder = async (path: string) => {
+const openFolder = async (path: string, addToHistory = true) => {
   try {
     const files = await invoke('read_directory', { path });
     fileList.value = files;
+    if (addToHistory && currentPath.value) {
+      pathHistory.value.push(currentPath.value);
+    }
+    currentPath.value = path;
   } catch (error) {
     ElMessage.error('读取文件夹失败');
     console.error(error);
+  }
+};
+
+// 返回上一级目录
+const goBack = async () => {
+  if (canGoBack()) {
+    const previousPath = pathHistory.value[pathHistory.value.length - 2];
+    if (previousPath) {
+      // 移除当前路径之后的所有历史记录
+      pathHistory.value = pathHistory.value.slice(0, -1);
+      await openFolder(previousPath, false);
+    }
   }
 };
 
@@ -53,7 +76,7 @@ const openFolder = async (path: string) => {
 const handleRowClick = (row: any) => {
   if (row.is_dir) {
     currentPath.value = row.path;
-    openFolder(row.path);
+    openFolder(row.path, true);
   }
 };
 
@@ -62,6 +85,14 @@ const handleRowClick = (row: any) => {
 <template>
   <div class="resource-manager">
     <div class="toolbar">
+      <el-button
+        @click="goBack"
+        :disabled="!canGoBack()"
+        type="primary"
+        class="back-button"
+      >
+        返回上一级
+      </el-button>
       <el-input
         v-model="currentPath"
         placeholder="当前路径"
@@ -103,10 +134,15 @@ const handleRowClick = (row: any) => {
 .toolbar {
   display: flex;
   gap: 10px;
+  align-items: center;
 }
 
 .path-input {
   flex: 1;
+}
+
+.back-button {
+  min-width: 100px;
 }
 
 .el-table {
