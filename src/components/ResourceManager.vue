@@ -37,7 +37,9 @@ const isVideoFile = (filename: string) => {
 const previewVideo = async (path: string) => {
   try {
     openLoading();
+    // 使用 Tauri 的 convertFileSrc 函数将文件路径转换为可用于视频预览的  URL (tauri 的protocol协议实现的  要在配置文件开权限)
     const assetUrl = await convertFileSrc(path);
+    console.log('assetUrl：', assetUrl);
     currentVideoUrl.value = assetUrl;
     showVideoPreview.value = true;
     closeLoading();

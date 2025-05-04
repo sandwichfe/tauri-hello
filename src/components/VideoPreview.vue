@@ -43,6 +43,7 @@ const handleVideoLoaded = () => {
     <video
       controls
       autoplay
+      muted
       class="video-player"
       :src="videoUrl"
       @error="handleVideoError"
