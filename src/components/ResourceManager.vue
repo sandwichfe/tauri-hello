@@ -4,17 +4,41 @@ import { ElButton, ElTable, ElTableColumn, ElInput, ElMessage } from 'element-pl
 import { invoke } from '@tauri-apps/api/core';
 import { open } from '@tauri-apps/plugin-dialog';
 import { dirname } from '@tauri-apps/api/path';
+import VideoPreview from './VideoPreview.vue';
+
+// 视频文件扩展名
+const videoExtensions = ['.mp4', '.webm', '.ogg', '.mov', '.avi'];
 
 const currentPath = ref('');
 const fileList = ref([]);
 const pathHistory = ref<string[]>([]);
 
+// 视频预览相关
+const showVideoPreview = ref(false);
+const currentVideoUrl = ref('');
+
 // 检查是否可以返回上一级
 const canGoBack = () => pathHistory.value.length > 0;
 
 // 文件类型图标映射
-const getFileIcon = (isDir: boolean) => {
-  return isDir ? '📁' : '📄';
+const getFileIcon = (row: any) => {
+  if (row.is_dir) return '📁';
+  if (isVideoFile(row.name)) return '🎥';
+  return '📄';
+};
+
+// 判断是否为视频文件
+const isVideoFile = (filename: string) => {
+  return videoExtensions.some(ext => filename.toLowerCase().endsWith(ext));
+};
+
+// 预览视频
+const previewVideo = async (path: string) => {
+  const fileContent = await invoke('read_file', { path });
+  const blob = new Blob([fileContent]);
+  const url = URL.createObjectURL(blob);
+  currentVideoUrl.value = url;
+  showVideoPreview.value = true;
 };
 
 // 格式化文件大小
@@ -77,6 +101,8 @@ const handleRowClick = (row: any) => {
   if (row.is_dir) {
     currentPath.value = row.path;
     openFolder(row.path, true);
+  } else if (isVideoFile(row.name)) {
+    previewVideo(row.path);
   }
 };
 
@@ -108,7 +134,7 @@ const handleRowClick = (row: any) => {
     <el-table :data="fileList" style="width: 100%" @row-click="handleRowClick">
       <el-table-column label="类型" width="50">
         <template #default="{ row }">
-          <span>{{ getFileIcon(row.is_dir) }}</span>
+          <span>{{ getFileIcon(row) }}</span>
         </template>
       </el-table-column>
       <el-table-column prop="name" label="名称" />
@@ -119,6 +145,11 @@ const handleRowClick = (row: any) => {
       </el-table-column>
       <el-table-column prop="modified_time" label="修改时间" width="180" />
     </el-table>
+
+    <VideoPreview
+      v-model:visible="showVideoPreview"
+      :video-url="currentVideoUrl"
+    />
   </div>
 </template>
 
