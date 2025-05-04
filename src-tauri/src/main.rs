@@ -19,11 +19,17 @@ async fn my_custom_command(command: String) -> Result<String, String> {
     }
 }
 
+#[tauri::command]
+async fn read_binary_file(path: String) -> Result<Vec<u8>, String> {
+    std::fs::read(&path)
+        .map_err(|e| e.to_string())
+}
+
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
-        .invoke_handler(tauri::generate_handler![my_custom_command, read_directory])
+        .invoke_handler(tauri::generate_handler![my_custom_command, read_directory, read_binary_file])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

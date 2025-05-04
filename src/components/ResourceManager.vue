@@ -5,6 +5,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { open } from '@tauri-apps/plugin-dialog';
 import { dirname } from '@tauri-apps/api/path';
 import VideoPreview from './VideoPreview.vue';
+import { openLoading, closeLoading } from "../../src/utils/loadingUtil";
 
 // 视频文件扩展名
 const videoExtensions = ['.mp4', '.webm', '.ogg', '.mov', '.avi'];
@@ -34,11 +35,19 @@ const isVideoFile = (filename: string) => {
 
 // 预览视频
 const previewVideo = async (path: string) => {
-  const fileContent = await invoke('read_file', { path });
-  const blob = new Blob([fileContent]);
-  const url = URL.createObjectURL(blob);
-  currentVideoUrl.value = url;
-  showVideoPreview.value = true;
+  try {
+    console.log('readStart:', path);
+    openLoading();
+    const fileData = await invoke('read_binary_file', { path });
+    console.log('readfinsh:', path);
+    const blob = new Blob([fileData], { type: 'video/*' });
+    closeLoading();
+    currentVideoUrl.value = URL.createObjectURL(blob);
+    showVideoPreview.value = true;
+  } catch (error) {
+    ElMessage.error('视频加载失败');
+    console.error(error);
+  }
 };
 
 // 格式化文件大小
