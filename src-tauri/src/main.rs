@@ -21,8 +21,16 @@ async fn my_custom_command(command: String) -> Result<String, String> {
 
 #[tauri::command]
 async fn read_binary_file(path: String) -> Result<Vec<u8>, String> {
-    std::fs::read(&path)
-        .map_err(|e| e.to_string())
+    println!("正在读取文件: {}", path);
+    let result = std::fs::read(&path)
+        .map_err(|e| {
+            println!("文件读取错误: {}", e);
+            e.to_string()
+        });
+    if let Ok(data) = &result {
+        println!("成功读取文件: {}, 大小: {} 字节", path, data.len());
+    }
+    result
 }
 
 fn main() {

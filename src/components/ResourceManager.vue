@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { ElButton, ElTable, ElTableColumn, ElInput, ElMessage } from 'element-plus';
-import { invoke } from '@tauri-apps/api/core';
+import { invoke, convertFileSrc } from '@tauri-apps/api/core';
 import { open } from '@tauri-apps/plugin-dialog';
 import { dirname } from '@tauri-apps/api/path';
 import VideoPreview from './VideoPreview.vue';
@@ -36,14 +36,11 @@ const isVideoFile = (filename: string) => {
 // 预览视频
 const previewVideo = async (path: string) => {
   try {
-    console.log('readStart:', path);
     openLoading();
-    const fileData = await invoke('read_binary_file', { path });
-    console.log('readfinsh:', path);
-    const blob = new Blob([fileData], { type: 'video/*' });
-    closeLoading();
-    currentVideoUrl.value = URL.createObjectURL(blob);
+    const assetUrl = await convertFileSrc(path);
+    currentVideoUrl.value = assetUrl;
     showVideoPreview.value = true;
+    closeLoading();
   } catch (error) {
     ElMessage.error('视频加载失败');
     console.error(error);

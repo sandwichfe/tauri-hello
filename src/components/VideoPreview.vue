@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import { ElDialog } from 'element-plus';
+import { ElMessage,ElDialog } from 'element-plus';
 
 const props = defineProps<{
   visible: boolean;
@@ -13,6 +13,21 @@ const emit = defineEmits<{
 
 const handleClose = () => {
   emit('update:visible', false);
+};
+
+const handleVideoError = (e: Event) => {
+  console.error('视频加载错误详情:', {
+    eventType: e.type,
+    target: e.target,
+    timeStamp: e.timeStamp,
+    error: (e.target as HTMLVideoElement)?.error
+  });
+  ElMessage.error('视频加载失败，请检查文件格式或内容');
+  emit('update:visible', false);
+};
+
+const handleVideoLoaded = () => {
+  console.log('视频已成功加载');
 };
 </script>
 
@@ -30,6 +45,8 @@ const handleClose = () => {
       autoplay
       class="video-player"
       :src="videoUrl"
+      @error="handleVideoError"
+      @loadeddata="handleVideoLoaded"
     ></video>
   </el-dialog>
 </template>
