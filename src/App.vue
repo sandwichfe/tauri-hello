@@ -2,6 +2,7 @@
 import { ref } from "vue";
 import { invoke } from "@tauri-apps/api/core";
 import { ElMessage, ElTabs, ElTabPane } from 'element-plus';
+import ResourceManager from './components/ResourceManager.vue';
 // @ts-ignore
 import { openLoading, closeLoading } from "../src/utils/loadingUtil";
 
@@ -90,6 +91,11 @@ async function openSetProxyDialog() {
           <h2>其他功能模块</h2>
           <p>在这里添加其他模块内容。</p>
         </div>
+      </el-tab-pane>
+
+      <!-- 资源管理 Tab -->
+      <el-tab-pane label="资源管理">
+        <ResourceManager />
       </el-tab-pane>
 
       <!-- 设置 Tab -->
