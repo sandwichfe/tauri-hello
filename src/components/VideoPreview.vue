@@ -35,10 +35,10 @@ const handleVideoLoaded = () => {
   <el-dialog
     :model-value="visible"
     @update:model-value="emit('update:visible', $event)"
-    title="视频预览"
-    width="80%"
+    width="90%"
     @close="handleClose"
     destroy-on-close
+    :show-close="false"
   >
     <video
       controls
