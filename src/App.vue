@@ -39,10 +39,6 @@ import GitProxyManager from './components/GitProxyManager.vue';
   </div>
 </template>
 
-<style scoped>
-/* 保持原样样式 */
-</style>
-
 
 <style scoped>
 :root {
@@ -110,11 +106,12 @@ button:active {
   overflow: hidden;  /* 防止Tab切换时页面往上跑 */
 }
 
+/* 内容 */
 .el-tab-pane {
-  padding: 20px;
+  padding: 2px;
+  height: 500px;
   background-color: #f0f0f0;
   border-radius: 8px;
-  height: 480px; /* 设置固定高度 */
   overflow: auto;  /* 防止溢出内容 */
 }
 

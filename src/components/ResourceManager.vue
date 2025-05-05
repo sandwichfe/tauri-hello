@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import { ElButton, ElTable, ElTableColumn, ElInput, ElMessage } from 'element-plus';
+import { ElButton, ElTable, ElTableColumn, ElInput, ElMessage, ElIcon } from 'element-plus';
+import { ArrowLeft } from '@element-plus/icons-vue';
 import { invoke, convertFileSrc } from '@tauri-apps/api/core';
 import { open } from '@tauri-apps/plugin-dialog';
 import VideoPreview from './VideoPreview.vue';
@@ -192,10 +193,10 @@ const applySorting = (prop: string, order: string) => {
       <el-button
         @click="goBack"
         :disabled="!canGoBack()"
-        type="primary"
+        type="info"
         class="back-button"
       >
-        返回上一级
+        <el-icon><arrow-left /></el-icon>
       </el-button>
       <el-input
         v-model="currentPath"
@@ -217,7 +218,7 @@ const applySorting = (prop: string, order: string) => {
     >
       <el-table-column 
         label="类型" 
-        width="50"
+        width="80"
         prop="is_dir"
         sortable="custom"
       >
@@ -257,7 +258,7 @@ const applySorting = (prop: string, order: string) => {
 
 <style scoped>
 .resource-manager {
-  padding: 20px;
+  padding: 5px;
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -275,7 +276,7 @@ const applySorting = (prop: string, order: string) => {
 }
 
 .back-button {
-  min-width: 100px;
+  min-width: 40px;
 }
 
 .el-table {
