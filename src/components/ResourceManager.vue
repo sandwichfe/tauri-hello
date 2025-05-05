@@ -3,7 +3,6 @@ import { ref } from 'vue';
 import { ElButton, ElTable, ElTableColumn, ElInput, ElMessage } from 'element-plus';
 import { invoke, convertFileSrc } from '@tauri-apps/api/core';
 import { open } from '@tauri-apps/plugin-dialog';
-import { dirname } from '@tauri-apps/api/path';
 import VideoPreview from './VideoPreview.vue';
 import { openLoading, closeLoading } from "../../src/utils/loadingUtil";
 
@@ -13,6 +12,10 @@ const videoExtensions = ['.mp4', '.webm', '.ogg', '.mov', '.avi'];
 const currentPath = ref('');
 const fileList = ref([]);
 const pathHistory = ref<string[]>([]);
+
+// 排序相关
+const sortColumn = ref('');
+const sortOrder = ref('');
 
 // 视频预览相关
 const showVideoPreview = ref(false);
@@ -86,6 +89,11 @@ const openFolder = async (path: string, addToHistory = true) => {
       pathHistory.value.push(currentPath.value);
     }
     currentPath.value = path;
+    
+    // 应用之前的排序（如果有）
+    if (sortColumn.value && sortOrder.value) {
+      applySorting(sortColumn.value, sortOrder.value);
+    }
   } catch (error) {
     ElMessage.error('读取文件夹失败');
     console.error(error);
@@ -114,6 +122,59 @@ const handleRowClick = (row: any) => {
   }
 };
 
+// 处理排序变化
+const handleSortChange = ({ column, prop, order }: any) => {
+  sortColumn.value = prop;
+  sortOrder.value = order;
+  
+  if (!order) {
+    // 如果取消排序，不做任何操作
+    return;
+  }
+  
+  applySorting(prop, order);
+};
+
+// 应用排序
+const applySorting = (prop: string, order: string) => {
+  const sortedList = [...fileList.value];
+  
+  // 首先按文件夹/文件类型排序（文件夹始终在前）
+  sortedList.sort((a, b) => {
+    // 如果正在按类型排序，则遵循排序方向
+    if (prop === 'is_dir') {
+      return order === 'ascending' 
+        ? Number(a.is_dir) - Number(b.is_dir)
+        : Number(b.is_dir) - Number(a.is_dir);
+    }
+    
+    // 否则，文件夹始终在前（除非正在按其他属性排序）
+    if (a.is_dir !== b.is_dir) {
+      return a.is_dir ? -1 : 1;
+    }
+    
+    // 然后按指定属性排序
+    if (prop === 'name') {
+      return order === 'ascending'
+        ? a.name.localeCompare(b.name)
+        : b.name.localeCompare(a.name);
+    } else if (prop === 'size') {
+      // 文件夹大小显示为 '-'，所以我们给它们一个默认值 -1
+      const sizeA = a.is_dir ? -1 : a.size;
+      const sizeB = b.is_dir ? -1 : b.size;
+      return order === 'ascending' ? sizeA - sizeB : sizeB - sizeA;
+    } else if (prop === 'modified_time') {
+      return order === 'ascending'
+        ? a.modified_time.localeCompare(b.modified_time)
+        : b.modified_time.localeCompare(a.modified_time);
+    }
+    
+    return 0;
+  });
+  
+  fileList.value = sortedList;
+};
+
 </script>
 
 <template>
@@ -139,19 +200,43 @@ const handleRowClick = (row: any) => {
       </el-input>
     </div>
     
-    <el-table :data="fileList" style="width: 100%" @row-click="handleRowClick">
-      <el-table-column label="类型" width="50">
+    <el-table 
+      :data="fileList" 
+      style="width: 100%" 
+      @row-click="handleRowClick"
+      @sort-change="handleSortChange"
+    >
+      <el-table-column 
+        label="类型" 
+        width="50"
+        prop="is_dir"
+        sortable="custom"
+      >
         <template #default="{ row }">
           <span>{{ getFileIcon(row) }}</span>
         </template>
       </el-table-column>
-      <el-table-column prop="name" label="名称" />
-      <el-table-column label="大小" width="120">
+      <el-table-column 
+        prop="name" 
+        label="名称"
+        sortable="custom" 
+      />
+      <el-table-column 
+        label="大小" 
+        width="120"
+        prop="size"
+        sortable="custom"
+      >
         <template #default="{ row }">
           <span>{{ row.is_dir ? '-' : formatFileSize(row.size) }}</span>
         </template>
       </el-table-column>
-      <el-table-column prop="modified_time" label="修改时间" width="180" />
+      <el-table-column 
+        prop="modified_time" 
+        label="修改时间" 
+        width="180"
+        sortable="custom" 
+      />
     </el-table>
 
     <VideoPreview
