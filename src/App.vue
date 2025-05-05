@@ -1,73 +1,7 @@
 <script setup lang="ts">
-import { ref } from "vue";
-import { invoke } from "@tauri-apps/api/core";
-import { ElMessage, ElTabs, ElTabPane } from 'element-plus';
+import { ElTabs, ElTabPane } from 'element-plus';
 import ResourceManager from './components/ResourceManager.vue';
-// @ts-ignore
-import { openLoading, closeLoading } from "../src/utils/loadingUtil";
-
-const proxy_ip = ref("http://127.0.0.1:7897");
-
-// Git代理相关功能
-async function enableGitProxy() {
-  openLoading();
-  try {
-    const proxyUrl = proxy_ip.value;  // 获取代理地址的值
-    await invoke('my_custom_command', { command: `git config --global http.proxy ${proxyUrl}` });
-    await invoke('my_custom_command', { command: `git config --global https.proxy ${proxyUrl}` });
-    ElMessage.success("代理已设置");
-  } catch (error) {
-    console.error("Error configuring proxy:", error);
-    ElMessage.error("Failed to configure proxy");
-  }
-  closeLoading();
-}
-
-async function closeGitProxy() {
-  openLoading();
-  try {
-    await invoke('my_custom_command', { command: "git config --global --unset http.proxy" });
-    await invoke('my_custom_command', { command: "git config --global --unset https.proxy" });
-    ElMessage.success("代理已取消");
-  } catch (error) {
-    console.error("Error removing proxy:", error);
-    ElMessage.error("操作失败");
-  }
-  closeLoading();
-}
-
-async function getGitProxyInfo() {
-  openLoading();
-  try {
-    const result_http: string = await invoke('my_custom_command', { command: "git config --global --get http.proxy" });
-    const result_https: string = await invoke('my_custom_command', { command: "git config --global --get https.proxy" });
-
-    if (!result_http.trim() && !result_https.trim()) {
-      ElMessage.success("未设置代理");
-    } else {
-      ElMessage.success({
-        message: result_http + "<br>" + result_https,
-        dangerouslyUseHTMLString: true
-      });
-    }
-  } catch (error) {
-    ElMessage.error("An error occurred while retrieving the proxy configuration.");
-    console.error(error);
-  }
-  closeLoading();
-}
-
-// Git代理相关功能
-async function openSetProxyDialog() {
-  const newProxyUrl = prompt("请输入新的代理地址", proxy_ip.value);  // 提示框
-  if (newProxyUrl) {
-    proxy_ip.value = newProxyUrl;
-    ElMessage.success(`代理地址已更新为: ${proxy_ip.value}`);
-  } else {
-    // ElMessage.error("请输入有效的代理地址");
-  }
-}
-
+import GitProxyManager from './components/GitProxyManager.vue';
 
 </script>
 
@@ -77,12 +11,7 @@ async function openSetProxyDialog() {
     <el-tabs type="card" class="tabs">
       <!-- 代理管理 Tab -->
       <el-tab-pane label="Git代理管理">
-        <div class="button-group">
-          <button @click="enableGitProxy" class="action-button">开启本地代理</button>
-          <button @click="closeGitProxy" class="action-button">关闭本地代理</button>
-          <button @click="getGitProxyInfo" class="action-button">查看代理</button>
-          <button @click="openSetProxyDialog" class="action-button">设置代理</button>
-        </div>
+        <GitProxyManager />
       </el-tab-pane>
 
       <!-- 其他模块 Tab -->
@@ -177,7 +106,7 @@ button:active {
 
 .el-tabs {
   width: 100%;
-  max-width: 800px;
+  max-width: 1000px;
   overflow: hidden;  /* 防止Tab切换时页面往上跑 */
 }
 

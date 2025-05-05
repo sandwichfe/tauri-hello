@@ -4,13 +4,22 @@ import { ElButton, ElTable, ElTableColumn, ElInput, ElMessage } from 'element-pl
 import { invoke, convertFileSrc } from '@tauri-apps/api/core';
 import { open } from '@tauri-apps/plugin-dialog';
 import VideoPreview from './VideoPreview.vue';
+// @ts-ignore
 import { openLoading, closeLoading } from "../../src/utils/loadingUtil";
+
+interface FileItem {
+  is_dir: boolean;
+  name: string;
+  size: number;
+  modified_time: string;
+  path: string;
+}
 
 // 视频文件扩展名
 const videoExtensions = ['.mp4', '.webm', '.ogg', '.mov', '.avi'];
 
 const currentPath = ref('');
-const fileList = ref([]);
+const fileList = ref<FileItem[]>([]);
 const pathHistory = ref<string[]>([]);
 
 // 排序相关
@@ -83,7 +92,7 @@ const selectFolder = async () => {
 // 打开文件夹
 const openFolder = async (path: string, addToHistory = true) => {
   try {
-    const files = await invoke('read_directory', { path });
+    const files = await invoke<FileItem[]>('read_directory', { path });
     fileList.value = files;
     if (addToHistory && currentPath.value) {
       pathHistory.value.push(currentPath.value);

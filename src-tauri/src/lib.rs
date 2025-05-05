@@ -1,6 +1,8 @@
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 use std::os::windows::process::CommandExt;
-use std::process::{Command, Stdio}; // 引入 `Command` 来执行外部命令
+use std::process::{Command, Stdio}; 
+mod file_system;
+use file_system::read_directory;
 
 #[tauri::command]
 fn greet(name: &str) -> String {
@@ -11,8 +13,10 @@ fn greet(name: &str) -> String {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_fs::init())
         // 注册函数 用于js调用
-        .invoke_handler(tauri::generate_handler![greet, my_custom_command])
+        .invoke_handler(tauri::generate_handler![greet, my_custom_command,read_directory])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
@@ -45,3 +49,4 @@ fn my_custom_command(command: String) -> String {
     // 返回命令的输出作为字符串
     String::from_utf8_lossy(&output.stdout).to_string()
 }
+
