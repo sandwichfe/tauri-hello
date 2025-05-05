@@ -5,6 +5,7 @@ import { ArrowLeft } from '@element-plus/icons-vue';
 import { invoke, convertFileSrc } from '@tauri-apps/api/core';
 import { open } from '@tauri-apps/plugin-dialog';
 import VideoPreview from './VideoPreview.vue';
+import ImagePreview from './ImagePreview.vue';
 // @ts-ignore
 import { openLoading, closeLoading } from "../../src/utils/loadingUtil";
 
@@ -17,7 +18,9 @@ interface FileItem {
 }
 
 // 视频文件扩展名
-const videoExtensions = ['.mp4', '.webm', '.ogg', '.mov', '.avi'];
+const videoExtensions = ['.mp4', '.webm', '.ogg', '.mov', '.avi',".mp3"];
+// 图片文件扩展名
+const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'];
 
 const currentPath = ref('');
 const fileList = ref<FileItem[]>([]);
@@ -27,9 +30,11 @@ const pathHistory = ref<string[]>([]);
 const sortColumn = ref('');
 const sortOrder = ref('');
 
-// 视频预览相关
+// 预览相关
 const showVideoPreview = ref(false);
 const currentVideoUrl = ref('');
+const showImagePreview = ref(false);
+const currentImageUrl = ref('');
 
 // 检查是否可以返回上一级
 const canGoBack = () => pathHistory.value.length > 0;
@@ -38,12 +43,18 @@ const canGoBack = () => pathHistory.value.length > 0;
 const getFileIcon = (row: any) => {
   if (row.is_dir) return '📁';
   if (isVideoFile(row.name)) return '🎥';
+  if (isImageFile(row.name)) return '🖼️';
   return '📄';
 };
 
 // 判断是否为视频文件
 const isVideoFile = (filename: string) => {
   return videoExtensions.some(ext => filename.toLowerCase().endsWith(ext));
+};
+
+// 判断是否为图片文件
+const isImageFile = (filename: string) => {
+  return imageExtensions.some(ext => filename.toLowerCase().endsWith(ext));
 };
 
 // 预览视频
@@ -58,6 +69,21 @@ const previewVideo = async (path: string) => {
     closeLoading();
   } catch (error) {
     ElMessage.error('视频加载失败');
+    console.error(error);
+  }
+};
+
+// 预览图片
+const previewImage = async (path: string) => {
+  try {
+    // openLoading();
+    const assetUrl = await convertFileSrc(path);
+    console.log('assetUrl：', assetUrl);
+    showImagePreview.value = true;
+    currentImageUrl.value = assetUrl;
+    // closeLoading();
+  } catch (error) {
+    ElMessage.error('图片加载失败');
     console.error(error);
   }
 };
@@ -129,6 +155,8 @@ const handleRowClick = (row: any) => {
     openFolder(row.path, true);
   } else if (isVideoFile(row.name)) {
     previewVideo(row.path);
+  } else if (isImageFile(row.name)) {
+    previewImage(row.path);
   }
 };
 
@@ -252,6 +280,10 @@ const applySorting = (prop: string, order: string) => {
     <VideoPreview
       v-model:visible="showVideoPreview"
       :video-url="currentVideoUrl"
+    />
+    <ImagePreview
+      v-model:visible="showImagePreview"
+      :image-url="currentImageUrl"
     />
   </div>
 </template>
