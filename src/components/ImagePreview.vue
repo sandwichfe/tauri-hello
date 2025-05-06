@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ElMessage, ElImage } from 'element-plus';
+import { ElMessage, ElImage,ElImageViewer  } from 'element-plus';
 
 
 const props = defineProps<{
@@ -32,30 +32,34 @@ const handleImageLoaded = () => {
 </script>
 
 <template>
-  <el-dialog
-    :model-value="visible"
-    @update:model-value="emit('update:visible', $event)"
-    width="80%"
-    height="80%"
-    @close="handleClose"
-    destroy-on-close
-    :show-close="false"
-  >
+  <!-- <el-dialog :model-value="visible" @update:model-value="emit('update:visible', $event)" width="80%" height="80%"
+    @close="handleClose" destroy-on-close :show-close="false"> -->
 
-    <el-image
+    <!-- <el-image
       :src="imageUrl"
       :preview-src-list="[imageUrl]"
+      :preview-teleported="true"
       fit="contain"
       @error="handleImageError"
       @load="handleImageLoaded"
       @close="handleClose"
       show-progress
-      preview-teleported
       hide-on-click-modal
     >
-    </el-image>
+    </el-image> -->
+  <!-- </el-dialog> -->
 
-  </el-dialog>
+
+    <el-image-viewer v-if="visible" 
+    :url-list="[imageUrl]" 
+    @close="handleClose"
+    destroy-on-close
+    :show-close="false"
+    class="image-preview"
+    >
+    </el-image-viewer>
+
+
 </template>
 
 <style scoped>
@@ -64,4 +68,16 @@ const handleImageLoaded = () => {
   max-height: 70vh;
   object-fit: contain;
 }
+
+/* 大图预览的关闭图标 改为大一点的白色 */
+.el-image-viewer__btn.el-image-viewer__close {
+    color: #FFF;
+    opacity: unset;
+    top: 50px;
+    right: 50px;
+    width: 50px;
+    height: 50px;
+    font-size: 50px;
+}
+
 </style>
