@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { ElMessage, ElImage,ElImageViewer  } from 'element-plus';
+import { ElImageViewer  } from 'element-plus';
 
-
+// @ts-ignore-next-line
 const props = defineProps<{
   visible: boolean;
   imageUrls: string[];
