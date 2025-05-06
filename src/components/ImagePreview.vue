@@ -5,6 +5,7 @@ import { ElMessage, ElImage,ElImageViewer  } from 'element-plus';
 const props = defineProps<{
   visible: boolean;
   imageUrls: string[];
+  initialIndex: number;
 }>();
 
 const emit = defineEmits<{
@@ -41,12 +42,9 @@ const handleClose = () => {
 
     <el-image-viewer v-if="visible" 
     :url-list="imageUrls" 
-    :initial-index= 0     
+    :initial-index="initialIndex"     
     hide-on-click-modal
-    @close="handleClose"  
-    destroy-on-close
-    :show-close="false"
-    class="image-preview"
+    @close="handleClose"
     >
     </el-image-viewer>
 

@@ -25,7 +25,7 @@ const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'];
 
 const currentPath = ref('');
 const fileList = ref<FileItem[]>([]);
-const imageFiles = ref<FileItem[]>([]);
+const imageFiles = ref<Map<string, number>>(new Map());
 const pathHistory = ref<string[]>([]);
 const configPath = ref('pathConfig.json');
 
@@ -38,6 +38,7 @@ const showVideoPreview = ref(false);
 const currentVideoUrl = ref('');
 const showImagePreview = ref(false);
 const currentImageUrl = ref<string[]>([]);
+const currentIndex = ref(0);
 
 // 检查是否可以返回上一级
 const canGoBack = () => pathHistory.value.length > 0;
@@ -79,13 +80,15 @@ const previewVideo = async (path: string) => {
 // 预览图片
 const previewImage = async (path: string) => {
   try {
-    // openLoading();
+    openLoading();
     const assetUrl = await convertFileSrc(path);
     console.log('assetUrl：', assetUrl);
+    currentImageUrl.value = await Promise.all(Array.from(imageFiles.value).map(async ([path, index]) => await convertFileSrc(path)));
+    // 计算当前点击图片在imageFiles中的索引
+    currentIndex.value = imageFiles.value.get(path) || 0;
+    // 渲染图片预览
     showImagePreview.value = true;
-    currentImageUrl.value = await Promise.all(imageFiles.value.map(async file => await convertFileSrc(file.path)));
-    console.log('currentImageUrl：', currentImageUrl.value);
-    // closeLoading();
+    closeLoading();
   } catch (error) {
     ElMessage.error('图片加载失败');
     console.error(error);
@@ -127,7 +130,9 @@ const openFolder = async (path: string, addToHistory = true) => {
   try {
     const files = await invoke<FileItem[]>('read_directory', { path });
     fileList.value = files;
-    imageFiles.value = files.filter(file => !file.is_dir && isImageFile(file.name));
+    imageFiles.value = new Map(files
+  .filter(file => !file.is_dir && isImageFile(file.name))
+  .map((file, index) => [file.path, index]));
     if (addToHistory && currentPath.value) {
       pathHistory.value.push(currentPath.value);
     }
@@ -330,6 +335,7 @@ const applySorting = (prop: string, order: string) => {
     <ImagePreview
       v-model:visible="showImagePreview"
       :image-urls="currentImageUrl"
+      :initial-index="currentIndex"
     />
   </div>
 </template>
