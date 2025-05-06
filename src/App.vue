@@ -60,6 +60,11 @@ import GitProxyManager from './components/GitProxyManager.vue';
   min-height: 60vh;
   gap: 20px;
   position: relative;
+  /* 取消选中文字效果 */
+  user-select: none;
+  -webkit-user-select: none; /* Safari */
+  -moz-user-select: none; /* Firefox */
+  -ms-user-select: none; /* Internet Explorer/Edge */
 }
 
 .button-group {
