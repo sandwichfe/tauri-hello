@@ -52,6 +52,7 @@ const handleImageLoaded = () => {
 
     <el-image-viewer v-if="visible" 
     :url-list="[imageUrl]" 
+    hide-on-click-modal
     @close="handleClose"
     destroy-on-close
     :show-close="false"
