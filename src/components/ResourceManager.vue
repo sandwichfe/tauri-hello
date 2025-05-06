@@ -148,7 +148,7 @@ const goBack = async () => {
   }
 };
 
-// 处理行点击事件
+// 处理行双击事件
 const handleRowClick = (row: any) => {
   if (row.is_dir) {
     currentPath.value = row.path;
@@ -240,8 +240,9 @@ const applySorting = (prop: string, order: string) => {
     
     <el-table 
       :data="fileList" 
+      class="ignore-double-click"
       style="width: 100%" 
-      @row-click="handleRowClick"
+      @row-dblclick="handleRowClick"
       @sort-change="handleSortChange"
     >
       <el-table-column 
@@ -315,4 +316,14 @@ const applySorting = (prop: string, order: string) => {
   flex: 1;
   overflow: auto;
 }
+
+/* 取消选中文字效果 */
+.ignore-double-click {
+  user-select: none;
+  -webkit-user-select: none; /* Safari */
+  -moz-user-select: none; /* Firefox */
+  -ms-user-select: none; /* Internet Explorer/Edge */
+}
+
+
 </style>
