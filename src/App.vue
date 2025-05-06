@@ -102,7 +102,6 @@ button:active {
 
 .el-tabs {
   width: 100%;
-  max-width: 1000px;
   overflow: hidden;  /* 防止Tab切换时页面往上跑 */
 }
 

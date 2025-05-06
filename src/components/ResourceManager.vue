@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import { ElButton, ElTable, ElTableColumn, ElInput, ElMessage, ElIcon } from 'element-plus';
 import { ArrowLeft } from '@element-plus/icons-vue';
 import { invoke, convertFileSrc } from '@tauri-apps/api/core';
 import { open } from '@tauri-apps/plugin-dialog';
+import { readTextFile, writeTextFile, BaseDirectory, mkdir, exists } from '@tauri-apps/plugin-fs';
 import VideoPreview from './VideoPreview.vue';
 import ImagePreview from './ImagePreview.vue';
 // @ts-ignore
@@ -25,6 +26,7 @@ const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'];
 const currentPath = ref('');
 const fileList = ref<FileItem[]>([]);
 const pathHistory = ref<string[]>([]);
+const configPath = ref('pathConfig.json');
 
 // 排序相关
 const sortColumn = ref('');
@@ -106,8 +108,10 @@ const selectFolder = async () => {
     
     if (selected) {
       currentPath.value = selected as string;
-    // 清空历史记录  
-    pathHistory.value = [];
+      // 保存路径配置
+      await savePathConfig();
+      // 清空历史记录  
+      pathHistory.value = [];
       await openFolder(currentPath.value);
     }
   } catch (error) {
@@ -174,6 +178,44 @@ const handleSortChange = ({ column, prop, order }: any) => {
 };
 
 // 应用排序
+// 保存路径配置
+const savePathConfig = async () => {
+  try {
+    // 确保目录存在
+    const dirExists = await exists('', { baseDir: BaseDirectory.AppConfig });
+    if (!dirExists) {
+      await mkdir('', {
+        recursive: true,
+        baseDir: BaseDirectory.AppConfig
+      });
+    }
+    // 写入配置文件
+    await writeTextFile(configPath.value, JSON.stringify({ currentPath: currentPath.value }), {
+      baseDir: BaseDirectory.AppConfig,
+      create: true
+    });
+  } catch (error) {
+    console.error('保存路径配置失败:', error);
+  }
+};
+
+// 加载路径配置
+onMounted(async () => {
+  try {
+    const config = await readTextFile(configPath.value, {
+      baseDir: BaseDirectory.AppConfig
+    });
+    
+    const { currentPath: savedPath } = JSON.parse(config);
+    if (savedPath) {
+      currentPath.value = savedPath;
+      await openFolder(savedPath, false);
+    }
+  } catch (error) {
+    console.log('首次运行或配置文件不存在，使用默认值');
+  }
+});
+
 const applySorting = (prop: string, order: string) => {
   const sortedList = [...fileList.value];
   
