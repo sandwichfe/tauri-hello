@@ -1,11 +1,27 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, onMounted } from "vue";
 import { invoke } from "@tauri-apps/api/core";
 import { ElMessage } from 'element-plus';
 // @ts-ignore
 import { openLoading, closeLoading } from "../../src/utils/loadingUtil";
+import { readTextFile, writeTextFile,BaseDirectory,mkdir,exists  } from '@tauri-apps/plugin-fs'
 
 const proxy_ip = ref("http://127.0.0.1:7897");
+const configPath = ref("");
+
+onMounted(async () => {
+  try {
+    configPath.value = 'proxyConfig.json';
+    const config = await readTextFile(configPath.value, {
+      baseDir: BaseDirectory.AppConfig
+    });
+    
+    const { config: savedConfig } = JSON.parse(config);
+    proxy_ip.value = savedConfig?.proxy_ip || "http://127.0.0.1:7897";
+  } catch (error) {
+    console.log('首次运行或配置文件不存在，使用默认值');
+  }
+});
 
 async function enableGitProxy() {
   openLoading();
@@ -58,7 +74,25 @@ async function openSetProxyDialog() {
   const newProxyUrl = prompt("请输入新的代理地址", proxy_ip.value);
   if (newProxyUrl) {
     proxy_ip.value = newProxyUrl;
-    ElMessage.success(`代理地址已更新为: ${proxy_ip.value}`);
+    try {
+      // 确保目录存在
+      const dirExists = await exists('', { baseDir: BaseDirectory.AppConfig });
+      if (!dirExists) {
+        await mkdir('', {
+          recursive: true,
+          baseDir: BaseDirectory.AppConfig
+        });
+      }
+      // 写入配置文件
+      await writeTextFile(configPath.value, JSON.stringify({ config: { proxy_ip: proxy_ip.value } }), {
+        baseDir: BaseDirectory.AppConfig,
+        create: true
+      });
+      ElMessage.success(`代理地址已更新为: ${proxy_ip.value}`);
+    } catch (error) {
+      console.error('保存代理配置失败:', error);
+      ElMessage.error(`保存代理配置失败: ${error instanceof Error ? error.message : String(error)}`);
+    }
   }
 }
 

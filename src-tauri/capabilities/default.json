@@ -6,9 +6,26 @@
     "main"
   ],
   "permissions": [
+    {
+      "identifier": "fs:scope",
+      "allow": [
+        {
+          "path": "$APPDATA"
+        },
+        {
+          "path": "$APPDATA/**"
+        }
+      ]
+    },
     "core:default",
     "shell:allow-open",
+    "dialog:default",
     "fs:allow-app-read-recursive",
-    "dialog:default"
+    "fs:read-files",
+    "fs:write-files",
+    "fs:allow-appdata-read-recursive",
+    "fs:allow-appdata-write-recursive",
+    "fs:default"
+    
   ]
 }
