@@ -1,14 +1,42 @@
 <script setup lang="ts">
 import { ElTabs, ElTabPane } from 'element-plus';
+import type { TabsInstance } from 'element-plus'
 import ResourceManager from './components/ResourceManager.vue';
 import GitProxyManager from './components/GitProxyManager.vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 
+// 计算高度（使用 computed 让高度保持响应式）
+const tabsContentHeight = computed(() => `${document.documentElement.clientHeight - 65}px`);
+
+// 使用 TabsInstance 类型声明 ref
+const tabsRef = ref<TabsInstance | null>(null);
+
+// 更新 Tab Content 高度的函数
+const updateTabContentHeight = () => {
+  if (tabsRef.value?.$el) {
+    const contentEl = tabsRef.value.$el.querySelector('.el-tabs__content');
+    if (contentEl) {
+      contentEl.style.height = tabsContentHeight.value;
+    }
+  }
+};
+
+// 组件挂载时设置初始高度并添加 resize 监听
+onMounted(() => {
+  updateTabContentHeight(); // 初始设置
+  window.addEventListener('resize', updateTabContentHeight);
+});
+
+// 组件卸载时移除监听（重要！避免内存泄漏）
+onUnmounted(() => {
+  window.removeEventListener('resize', updateTabContentHeight);
+});
 </script>
 
 <template>
   <div class="container">
     <!-- Tabs组件 -->
-    <el-tabs type="card" class="tabs">
+    <el-tabs type="card" class="tabs"  ref="tabsRef">
       <!-- 代理管理 Tab -->
       <el-tab-pane label="Git代理管理">
         <GitProxyManager />
@@ -43,27 +71,27 @@ import GitProxyManager from './components/GitProxyManager.vue';
 <style scoped>
 
 .container {
-  margin: 0;
-  padding: 0;
-  /* 取消选中文字效果 */
-  user-select: none;
-  -webkit-user-select: none; /* Safari */
-  -moz-user-select: none; /* Firefox */
-  -ms-user-select: none; /* Internet Explorer/Edge */
-}
-
-.tabs {
-  background-color: #9d5555;
   width: 100%;
-  overflow: hidden;  /* 防止Tab切换时页面往上跑 */
+  margin: 0 auto;
+  padding: 0;
+  user-select: none;  /* 禁止文字选中 */
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
 }
 
-/* 内容 */
-.tabs .el-tab-pane {
-  background-color: #4b71b2;
-  border-radius: 8px;
-  overflow: auto;  /* 防止溢出内容 */
+.tabs >>> .el-tabs__header {
+  height: 42px;
+  /* background-color: #9d5555; */
+  margin: 0;
 }
+
+.tabs >>> .el-tabs__content {
+  /* background-color: #7441b0; */
+  overflow: auto;
+  min-height: 200px;  /* 关键修复：防止高度塌陷 */
+}
+
 
 .button-group {
   display: flex;
