@@ -41,30 +41,28 @@ import GitProxyManager from './components/GitProxyManager.vue';
 
 
 <style scoped>
-:root {
-  font-family: Inter, Avenir, Helvetica, Arial, sans-serif;
-  font-size: 16px;
-  line-height: 24px;
-  font-weight: 400;
-  color: #333;
-  background-color: #f6f6f6;
-}
 
 .container {
   margin: 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  text-align: center;
-  min-height: 60vh;
-  gap: 20px;
-  position: relative;
+  padding: 0;
   /* 取消选中文字效果 */
   user-select: none;
   -webkit-user-select: none; /* Safari */
   -moz-user-select: none; /* Firefox */
   -ms-user-select: none; /* Internet Explorer/Edge */
+}
+
+.tabs {
+  background-color: #9d5555;
+  width: 100%;
+  overflow: hidden;  /* 防止Tab切换时页面往上跑 */
+}
+
+/* 内容 */
+.tabs .el-tab-pane {
+  background-color: #4b71b2;
+  border-radius: 8px;
+  overflow: auto;  /* 防止溢出内容 */
 }
 
 .button-group {
@@ -103,20 +101,6 @@ button:hover {
 
 button:active {
   background-color: #9ea6a7; /* 点击时的蓝色 */
-}
-
-.el-tabs {
-  width: 100%;
-  overflow: hidden;  /* 防止Tab切换时页面往上跑 */
-}
-
-/* 内容 */
-.el-tab-pane {
-  padding: 2px;
-  height: 500px;
-  background-color: #f0f0f0;
-  border-radius: 8px;
-  overflow: auto;  /* 防止溢出内容 */
 }
 
 h2 {
