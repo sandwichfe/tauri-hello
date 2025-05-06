@@ -25,6 +25,7 @@ const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'];
 
 const currentPath = ref('');
 const fileList = ref<FileItem[]>([]);
+const imageFiles = ref<FileItem[]>([]);
 const pathHistory = ref<string[]>([]);
 const configPath = ref('pathConfig.json');
 
@@ -36,7 +37,7 @@ const sortOrder = ref('');
 const showVideoPreview = ref(false);
 const currentVideoUrl = ref('');
 const showImagePreview = ref(false);
-const currentImageUrl = ref('');
+const currentImageUrl = ref<string[]>([]);
 
 // 检查是否可以返回上一级
 const canGoBack = () => pathHistory.value.length > 0;
@@ -82,7 +83,8 @@ const previewImage = async (path: string) => {
     const assetUrl = await convertFileSrc(path);
     console.log('assetUrl：', assetUrl);
     showImagePreview.value = true;
-    currentImageUrl.value = assetUrl;
+    currentImageUrl.value = await Promise.all(imageFiles.value.map(async file => await convertFileSrc(file.path)));
+    console.log('currentImageUrl：', currentImageUrl.value);
     // closeLoading();
   } catch (error) {
     ElMessage.error('图片加载失败');
@@ -125,6 +127,7 @@ const openFolder = async (path: string, addToHistory = true) => {
   try {
     const files = await invoke<FileItem[]>('read_directory', { path });
     fileList.value = files;
+    imageFiles.value = files.filter(file => !file.is_dir && isImageFile(file.name));
     if (addToHistory && currentPath.value) {
       pathHistory.value.push(currentPath.value);
     }
@@ -326,7 +329,7 @@ const applySorting = (prop: string, order: string) => {
     />
     <ImagePreview
       v-model:visible="showImagePreview"
-      :image-url="currentImageUrl"
+      :image-urls="currentImageUrl"
     />
   </div>
 </template>

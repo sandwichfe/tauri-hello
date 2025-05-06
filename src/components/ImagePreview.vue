@@ -4,7 +4,7 @@ import { ElMessage, ElImage,ElImageViewer  } from 'element-plus';
 
 const props = defineProps<{
   visible: boolean;
-  imageUrl: string;
+  imageUrls: string[];
 }>();
 
 const emit = defineEmits<{
@@ -16,18 +16,7 @@ const handleClose = () => {
   emit('update:visible', false);
 };
 
-const handleImageError = (e: Event) => {
-  console.error('图片加载错误详情:', {
-    eventType: e.type,
-    target: e.target,
-    timeStamp: e.timeStamp
-  });
-  ElMessage.error('图片加载失败，请检查文件格式或内容');
-};
 
-const handleImageLoaded = () => {
-  console.log('图片已成功加载');
-};
 
 </script>
 
@@ -51,9 +40,10 @@ const handleImageLoaded = () => {
 
 
     <el-image-viewer v-if="visible" 
-    :url-list="[imageUrl]" 
+    :url-list="imageUrls" 
+    :initial-index= 0     
     hide-on-click-modal
-    @close="handleClose"
+    @close="handleClose"  
     destroy-on-close
     :show-close="false"
     class="image-preview"
