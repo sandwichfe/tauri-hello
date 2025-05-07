@@ -4,32 +4,63 @@ import type { TabsInstance } from 'element-plus'
 import ResourceManager from './components/ResourceManager.vue';
 import GitProxyManager from './components/GitProxyManager.vue';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { getCurrentWindow,  } from '@tauri-apps/api/window';
 
+const windowsHeight = ref(0);
 // 计算高度（使用 computed 让高度保持响应式）
-const tabsContentHeight = computed(() => `${document.documentElement.clientHeight - 65}px`);
+const tabsContentHeight = computed(() => `${(windowsHeight.value/1.25)  - 65}px`);
 
 // 使用 TabsInstance 类型声明 ref
 const tabsRef = ref<TabsInstance | null>(null);
 
-// 更新 Tab Content 高度的函数
-const updateTabContentHeight = () => {
+// 更新 Tab Content 高度的函数（添加防抖）
+const updateTabContentHeight = async () => {
+  windowsHeight.value = (await getCurrentWindow().innerSize()).height;
+  console.log('windowsHeight updated:', windowsHeight.value/1.25);
+  // 确保 tabsRef 已经挂载
   if (tabsRef.value?.$el) {
     const contentEl = tabsRef.value.$el.querySelector('.el-tabs__content');
     if (contentEl) {
       contentEl.style.height = tabsContentHeight.value;
+      console.log('tabsContentHeight updated:', tabsContentHeight.value);
     }
   }
 };
 
+// 防抖函数
+const debounce = (fn: Function, delay: number) => {
+  let timer: number | null = null;
+  return function(this: any, ...args: any[]) {
+    if (timer) {
+      clearTimeout(timer);
+    }
+    timer = setTimeout(() => {
+      fn.apply(this, args);
+      timer = null;
+    }, delay);
+  };
+};
+
+// 创建防抖版本的高度更新函数
+const debouncedUpdateTabContentHeight = debounce(updateTabContentHeight, 100);
+
+
 // 组件挂载时设置初始高度并添加 resize 监听
 onMounted(() => {
-  updateTabContentHeight(); // 初始设置
-  window.addEventListener('resize', updateTabContentHeight);
+  // 初始设置
+  updateTabContentHeight();
+  // 使用Tauri的onResized方法监听窗口大小变化
+  getCurrentWindow().onResized(async ({ payload: size }) => {
+    debouncedUpdateTabContentHeight();
+    windowsHeight.value = size.height;
+    console.log('Window resized', size);
+  })
+
 });
 
 // 组件卸载时移除监听（重要！避免内存泄漏）
 onUnmounted(() => {
-  window.removeEventListener('resize', updateTabContentHeight);
+
 });
 </script>
 
@@ -80,13 +111,13 @@ onUnmounted(() => {
   -ms-user-select: none;
 }
 
-.tabs >>> .el-tabs__header {
+.tabs :deep(.el-tabs__header) {
   height: 42px;
   /* background-color: #9d5555; */
   margin: 0;
 }
 
-.tabs >>> .el-tabs__content {
+.tabs :deep(.el-tabs__content) {
   /* background-color: #7441b0; */
   overflow: auto;
   min-height: 200px;  /* 关键修复：防止高度塌陷 */
