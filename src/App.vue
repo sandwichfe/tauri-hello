@@ -6,9 +6,11 @@ import GitProxyManager from './components/GitProxyManager.vue';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { getCurrentWindow,  } from '@tauri-apps/api/window';
 
+// 系统设置的缩放率
+const scaleFactor = ref(1);
 const windowsHeight = ref(0);
 // 计算高度（使用 computed 让高度保持响应式）
-const tabsContentHeight = computed(() => `${(windowsHeight.value/1.25)  - 65}px`);
+const tabsContentHeight = computed(() => `${(windowsHeight.value/scaleFactor.value)  - 65}px`);
 
 // 使用 TabsInstance 类型声明 ref
 const tabsRef = ref<TabsInstance | null>(null);
@@ -16,7 +18,8 @@ const tabsRef = ref<TabsInstance | null>(null);
 // 更新 Tab Content 高度的函数（添加防抖）
 const updateTabContentHeight = async () => {
   windowsHeight.value = (await getCurrentWindow().innerSize()).height;
-  console.log('windowsHeight updated:', windowsHeight.value/1.25);
+  scaleFactor.value = await getCurrentWindow().scaleFactor();
+  console.log('windowsHeight updated:', windowsHeight.value/scaleFactor.value);
   // 确保 tabsRef 已经挂载
   if (tabsRef.value?.$el) {
     const contentEl = tabsRef.value.$el.querySelector('.el-tabs__content');
@@ -46,7 +49,11 @@ const debouncedUpdateTabContentHeight = debounce(updateTabContentHeight, 100);
 
 
 // 组件挂载时设置初始高度并添加 resize 监听
-onMounted(() => {
+onMounted(async () => {
+  // 获取缩放率
+  scaleFactor.value = await getCurrentWindow().scaleFactor();
+  console.log('scaleFactor:', scaleFactor.value);
+  
   // 初始设置
   updateTabContentHeight();
   // 使用Tauri的onResized方法监听窗口大小变化
