@@ -38,7 +38,7 @@ pub fn run() {
                 splashscreen.set_focus().unwrap();
                 
                 // 模拟资源加载过程 - 给主窗口更多时间准备内容
-                std::thread::sleep(std::time::Duration::from_secs(1));
+                std::thread::sleep(std::time::Duration::from_millis(100));
                 
                 // 关闭启动画面并显示主窗口
                 splashscreen.close().unwrap();
