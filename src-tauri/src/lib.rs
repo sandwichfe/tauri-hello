@@ -28,14 +28,11 @@ pub fn run() {
             std::thread::spawn(move || {
                 // 等待窗口完全加载（非常重要！）
                 std::thread::sleep(std::time::Duration::from_millis(500));
-                
                 // 先确保启动画面在前台
                 splashscreen.set_focus().unwrap();
-                
                 // 模拟加载过程
-                std::thread::sleep(std::time::Duration::from_secs(2));
-                
-                // 按正确顺序操作
+                std::thread::sleep(std::time::Duration::from_secs(1));
+                // 关闭启动画面并显示主窗口
                 splashscreen.close().unwrap();
                 main_window.show().unwrap();
                 main_window.set_focus().unwrap();
