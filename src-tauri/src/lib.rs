@@ -27,16 +27,28 @@ pub fn run() {
             // 延迟关闭启动画面并显示主窗口
             std::thread::spawn(move || {
                 // 等待窗口完全加载（非常重要！）
-                std::thread::sleep(std::time::Duration::from_millis(500));
+                std::thread::sleep(std::time::Duration::from_millis(1000));
+                
                 // 先确保启动画面在前台
                 splashscreen.set_focus().unwrap();
-                // 模拟加载过程
+                
+                // 模拟资源加载过程 - 给主窗口更多时间准备内容
                 std::thread::sleep(std::time::Duration::from_secs(1));
+                
+                // 在主窗口准备好后，先显示主窗口但保持隐藏状态
+                // 这样可以在后台预加载内容
+                // main_window.show().unwrap();
+                main_window.hide().unwrap();
+                
+                // 再等待一小段时间确保内容已完全加载
+                std::thread::sleep(std::time::Duration::from_millis(500));
+                
                 // 关闭启动画面并显示主窗口
                 splashscreen.close().unwrap();
                 main_window.show().unwrap();
                 main_window.set_focus().unwrap();
             });
+            
             
             Ok(())
         })
