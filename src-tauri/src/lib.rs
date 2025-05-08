@@ -18,30 +18,27 @@ pub fn run() {
         .plugin(tauri_plugin_fs::init())
         .invoke_handler(tauri::generate_handler![greet, my_custom_command, read_directory])
         .setup(|app| {
+            // 先获取启动画面窗口，确保它优先显示
             let splashscreen = app.get_webview_window("splashscreen").expect("无法获取启动窗口");
             let main_window = app.get_webview_window("main").expect("无法获取主窗口");
+            
+            // 确保启动画面立即显示并置于前台
+            splashscreen.show().unwrap();
+            splashscreen.set_focus().unwrap();
             
             // 确保主窗口初始隐藏
             main_window.hide().unwrap();
             
             // 延迟关闭启动画面并显示主窗口
             std::thread::spawn(move || {
-                // 等待窗口完全加载（非常重要！）
-                std::thread::sleep(std::time::Duration::from_millis(1000));
+                // 等待启动画面完全加载并显示
+                std::thread::sleep(std::time::Duration::from_millis(500));
                 
-                // 先确保启动画面在前台
+                // 确保启动画面保持在前台
                 splashscreen.set_focus().unwrap();
                 
                 // 模拟资源加载过程 - 给主窗口更多时间准备内容
                 std::thread::sleep(std::time::Duration::from_secs(1));
-                
-                // 在主窗口准备好后，先显示主窗口但保持隐藏状态
-                // 这样可以在后台预加载内容
-                // main_window.show().unwrap();
-                main_window.hide().unwrap();
-                
-                // 再等待一小段时间确保内容已完全加载
-                std::thread::sleep(std::time::Duration::from_millis(500));
                 
                 // 关闭启动画面并显示主窗口
                 splashscreen.close().unwrap();
