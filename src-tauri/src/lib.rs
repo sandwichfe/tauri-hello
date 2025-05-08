@@ -3,6 +3,7 @@ use std::os::windows::process::CommandExt;
 use std::process::{Command, Stdio}; 
 mod file_system;
 use file_system::read_directory;
+use tauri::Manager;
 
 #[tauri::command]
 fn greet(name: &str) -> String {
@@ -15,10 +16,35 @@ pub fn run() {
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
-        // 注册函数 用于js调用
-        .invoke_handler(tauri::generate_handler![greet, my_custom_command,read_directory])
+        .invoke_handler(tauri::generate_handler![greet, my_custom_command, read_directory])
+        .setup(|app| {
+            let splashscreen = app.get_webview_window("splashscreen").expect("无法获取启动窗口");
+            let main_window = app.get_webview_window("main").expect("无法获取主窗口");
+            
+            // 确保主窗口初始隐藏
+            main_window.hide().unwrap();
+            
+            // 延迟关闭启动画面并显示主窗口
+            std::thread::spawn(move || {
+                // 等待窗口完全加载（非常重要！）
+                std::thread::sleep(std::time::Duration::from_millis(500));
+                
+                // 先确保启动画面在前台
+                splashscreen.set_focus().unwrap();
+                
+                // 模拟加载过程
+                std::thread::sleep(std::time::Duration::from_secs(2));
+                
+                // 按正确顺序操作
+                splashscreen.close().unwrap();
+                main_window.show().unwrap();
+                main_window.set_focus().unwrap();
+            });
+            
+            Ok(())
+        })
         .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .expect("运行应用失败");
 }
 
 #[tauri::command]
