@@ -28,7 +28,7 @@
         "height": 600,
         "decorations": false,
         "resizable": false,
-        "transparent": false,
+        "transparent": true,
         "center": true
       }
     ],
