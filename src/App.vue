@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ElTabs, ElTabPane } from 'element-plus';
 import type { TabsInstance } from 'element-plus'
-import ResourceManager from './components/ResourceManager.vue';
-import GitProxyManager from './components/GitProxyManager.vue';
+import ResourceManager from './views/ResourceManager.vue';
+import GitProxyManager from './views/GitProxyManager.vue';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { getCurrentWindow,  } from '@tauri-apps/api/window';
 

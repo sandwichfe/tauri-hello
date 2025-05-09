@@ -2,7 +2,6 @@
 import { ref, onMounted } from "vue";
 import { invoke } from "@tauri-apps/api/core";
 import { ElMessage } from 'element-plus';
-// @ts-ignore
 import { openLoading, closeLoading } from "../../src/utils/loadingUtil";
 import { readTextFile, writeTextFile,BaseDirectory,mkdir,exists  } from '@tauri-apps/plugin-fs'
 

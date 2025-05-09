@@ -5,9 +5,8 @@ import { ArrowLeft } from '@element-plus/icons-vue';
 import { invoke, convertFileSrc } from '@tauri-apps/api/core';
 import { open } from '@tauri-apps/plugin-dialog';
 import { readTextFile, writeTextFile, BaseDirectory, mkdir, exists } from '@tauri-apps/plugin-fs';
-import VideoPreview from './VideoPreview.vue';
-import ImagePreview from './ImagePreview.vue';
-// @ts-ignore
+import VideoPreview from '../components/VideoPreview.vue';
+import ImagePreview from '../components/ImagePreview.vue';
 import { openLoading, closeLoading } from "../../src/utils/loadingUtil";
 
 interface FileItem {
