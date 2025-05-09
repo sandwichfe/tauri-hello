@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted,onUnmounted,computed } from 'vue';
 import { ElButton, ElTable, ElTableColumn, ElInput, ElMessage, ElIcon } from 'element-plus';
 import { ArrowLeft } from '@element-plus/icons-vue';
 import { invoke, convertFileSrc } from '@tauri-apps/api/core';
@@ -8,6 +8,7 @@ import { readTextFile, writeTextFile, BaseDirectory, mkdir, exists } from '@taur
 import VideoPreview from '../components/VideoPreview.vue';
 import ImagePreview from '../components/ImagePreview.vue';
 import { openLoading, closeLoading } from "../../src/utils/loadingUtil";
+import { getCurrentWindow,  } from '@tauri-apps/api/window';
 
 interface FileItem {
   is_dir: boolean;
@@ -38,13 +39,28 @@ const currentVideoUrl = ref('');
 const showImagePreview = ref(false);
 const currentImageUrl = ref<string[]>([]);
 const currentIndex = ref(0);
-const scrollbarHeight = ref('');
+
+
+// 系统设置的缩放率
+const scaleFactor = ref(1);
+const windowsHeight = ref(0);
+// 计算高度（使用 computed 让高度保持响应式）   改了样式这里要对应  这里的高度是减去了  65 是  导航栏的高度  32是  搜索框的高度  10是  间距
+const scrollbarHeight = computed(() => `${(windowsHeight.value/scaleFactor.value)  - 65 - 32- 10 }px`);
+
+const scrollRef = ref<any | null>(null);
+
+
 
 // 计算滚动区域高度
-const calculateScrollbarHeight = () => {
-  const windowStore = useWindowStore();
-  scrollbarHeight.value = `${windowStore.tabsContentHeight-32}px`;
-  console.log('scrollbarHeight:', scrollbarHeight.value);
+const calculateScrollbarHeight = async () => {
+  windowsHeight.value = (await getCurrentWindow().innerSize()).height;
+  scaleFactor.value = await getCurrentWindow().scaleFactor();
+
+  if (scrollRef.value?.$el) {
+      scrollRef.value.$el.style.height = scrollbarHeight.value;
+      console.log('scrollbarHeight:', scrollbarHeight.value);
+  }
+  
 };
 
 // 监听窗口大小变化
@@ -310,7 +326,7 @@ const applySorting = (prop: string, order: string) => {
       </el-input>
     </div>
     
-    <el-scrollbar  :native="true" >
+    <el-scrollbar  :native="true"  ref="scrollRef">
     <el-table 
       :data="fileList" 
       style="width: 100%" 
@@ -390,7 +406,7 @@ const applySorting = (prop: string, order: string) => {
 
 .el-scrollbar {
   /* height: 100%; */
-  height: v-bind(scrollbarHeight);
+  /* height: v-bind(scrollbarHeight);/ */
 }
 
 .el-table {
