@@ -22,7 +22,7 @@
       },
       {
         "label": "splashscreen",
-        "url": "splashscreen.html",
+        "url": "startup_page/splashscreen.html",
         "title": "Loading...",
         "width": 800,
         "height": 600,
