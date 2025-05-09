@@ -4,6 +4,8 @@ import App from "./App.vue";
 import ElementPlus from 'element-plus'
 import 'element-plus/dist/index.css'
 
+import { createPinia } from 'pinia';
+
 // 导入预加载功能
 import { preloadResources, openLoading, closeLoading } from './utils/loadingUtil';
 
@@ -12,6 +14,11 @@ const app = createApp(App);
 
 // 使用Element Plus
 app.use(ElementPlus);
+
+// 创建Pinia实例
+const pinia = createPinia();
+// 使用Pinia
+app.use(pinia);
 
 // 在挂载应用前先预加载资源
 async function initApp() {

@@ -17,6 +17,7 @@
     "@tauri-apps/plugin-fs": "^2.2.1",
     "@tauri-apps/plugin-shell": "^2",
     "element-plus": "^2.9.0",
+    "pinia": "^3.0.2",
     "v-viewer": "^3.0.11",
     "vue": "^3.3.4"
   },

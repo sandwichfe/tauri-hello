@@ -38,6 +38,19 @@ const currentVideoUrl = ref('');
 const showImagePreview = ref(false);
 const currentImageUrl = ref<string[]>([]);
 const currentIndex = ref(0);
+const scrollbarHeight = ref('');
+
+// 计算滚动区域高度
+const calculateScrollbarHeight = () => {
+  const windowStore = useWindowStore();
+  scrollbarHeight.value = `${windowStore.tabsContentHeight-32}px`;
+  console.log('scrollbarHeight:', scrollbarHeight.value);
+};
+
+// 监听窗口大小变化
+const handleResize = () => {
+  calculateScrollbarHeight();
+};
 
 // 检查是否可以返回上一级
 const canGoBack = () => pathHistory.value.length > 0;
@@ -218,9 +231,19 @@ onMounted(async () => {
       currentPath.value = savedPath;
       await openFolder(currentPath.value);
     }
+    
+    // 初始计算高度
+    calculateScrollbarHeight();
+    // 添加窗口大小变化监听
+    window.addEventListener('resize', handleResize);
   } catch (error) {
     console.log('首次运行或配置文件不存在，使用默认值');
   }
+});
+
+onUnmounted(() => {
+  // 移除监听
+  window.removeEventListener('resize', handleResize);
 });
 
 const applySorting = (prop: string, order: string) => {
@@ -287,6 +310,7 @@ const applySorting = (prop: string, order: string) => {
       </el-input>
     </div>
     
+    <el-scrollbar  :native="true" >
     <el-table 
       :data="fileList" 
       style="width: 100%" 
@@ -325,6 +349,7 @@ const applySorting = (prop: string, order: string) => {
         sortable="custom" 
       />
     </el-table>
+  </el-scrollbar>
 
     <VideoPreview
       v-model:visible="showVideoPreview"
@@ -344,13 +369,14 @@ const applySorting = (prop: string, order: string) => {
   height: 100%;
   display: flex;
   flex-direction: column;
-  gap: 20px;
 }
 
 .toolbar {
   display: flex;
   gap: 10px;
   align-items: center;
+   /* 避免工具栏被压缩 */
+  flex-shrink: 0;   
 }
 
 .path-input {
@@ -361,9 +387,16 @@ const applySorting = (prop: string, order: string) => {
   min-width: 40px;
 }
 
+
+.el-scrollbar {
+  /* height: 100%; */
+  height: v-bind(scrollbarHeight);
+}
+
 .el-table {
   flex: 1;
-  overflow: auto;
+  overflow-y: auto;
+  margin-top: 10px;
 }
 
 </style>
