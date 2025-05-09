@@ -216,7 +216,7 @@ onMounted(async () => {
     const { currentPath: savedPath } = JSON.parse(config);
     if (savedPath) {
       currentPath.value = savedPath;
-      await openFolder(savedPath, false);
+      await openFolder(currentPath.value);
     }
   } catch (error) {
     console.log('首次运行或配置文件不存在，使用默认值');
