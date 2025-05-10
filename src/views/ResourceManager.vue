@@ -41,14 +41,14 @@ const currentImageUrl = ref<string[]>([]);
 const currentIndex = ref(0);
 
 // 导航栏高度
-const tabsHeight = ref(65);
+const tabsHeight = ref(42.8);
 const toolbarHeight = ref(32);
 
 // 系统设置的缩放率
 const scaleFactor = ref(1);
 const windowsHeight = ref(0);
-// 计算高度（使用 computed 让高度保持响应式）   改了样式这里要对应     10是  间距
-const scrollbarHeight = computed(() => `${(windowsHeight.value/scaleFactor.value)  - tabsHeight.value - toolbarHeight.value- 10 }px`);
+// 计算高度（使用 computed 让高度保持响应式）
+const scrollbarHeight = computed(() => `${(windowsHeight.value/scaleFactor.value)  - tabsHeight.value - toolbarHeight.value  - 20-0.1  }px`);
 
 const scrollRef = ref<any | null>(null);
 
@@ -369,6 +369,9 @@ const applySorting = (prop: string, order: string) => {
       />
     </el-table>
   </el-scrollbar>
+  <div class="file-count">
+      共 {{ fileList.length }} 个文件
+    </div>
 
     <VideoPreview
       v-model:visible="showVideoPreview"
@@ -384,7 +387,6 @@ const applySorting = (prop: string, order: string) => {
 
 <style scoped>
 .resource-manager {
-  padding: 5px;
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -416,6 +418,15 @@ const applySorting = (prop: string, order: string) => {
   flex: 1;
   overflow-y: auto;
   margin-top: 10px;
+}
+
+.file-count {
+  line-height: 20px;
+  padding-right: 5px;
+  font-size: 13px;
+  border-top: 0.1px solid #ebeef5;
+  text-align: right;
+  color: #909399;
 }
 
 </style>
