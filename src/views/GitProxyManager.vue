@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { ref, onMounted } from "vue";
 import { invoke } from "@tauri-apps/api/core";
-import { ElMessage } from 'element-plus';
+import { ElMessage, ElButton, ElSwitch } from 'element-plus';
+import { Connection, CloseBold, Setting } from '@element-plus/icons-vue';
 import { openLoading, closeLoading } from "../../src/utils/loadingUtil";
-import { readTextFile, writeTextFile,BaseDirectory,mkdir,exists  } from '@tauri-apps/plugin-fs'
+import { readTextFile, writeTextFile, BaseDirectory, mkdir, exists } from '@tauri-apps/plugin-fs'
 
 const proxy_ip = ref("http://127.0.0.1:7897");
 const configPath = ref("");
+const proxyEnabled = ref(false);
 
 onMounted(async () => {
   try {
@@ -17,36 +19,61 @@ onMounted(async () => {
     
     const { config: savedConfig } = JSON.parse(config);
     proxy_ip.value = savedConfig?.proxy_ip || "http://127.0.0.1:7897";
+    
+    // 检查代理是否已启用
+    await checkProxyStatus();
   } catch (error) {
     console.log('首次运行或配置文件不存在，使用默认值');
   }
 });
 
-async function enableGitProxy() {
+// 检查代理状态
+async function checkProxyStatus() {
+  try {
+    const result_http: string = await invoke('my_custom_command', { command: "git config --global --get http.proxy" });
+    const result_https: string = await invoke('my_custom_command', { command: "git config --global --get https.proxy" });
+    proxyEnabled.value = !!(result_http.trim() || result_https.trim());
+  } catch (error) {
+    console.error("检查代理状态失败:", error);
+    proxyEnabled.value = false;
+  }
+}
+
+async function toggleProxy() {
   openLoading();
   try {
-    const proxyUrl = proxy_ip.value;
-    await invoke('my_custom_command', { command: `git config --global http.proxy ${proxyUrl}` });
-    await invoke('my_custom_command', { command: `git config --global https.proxy ${proxyUrl}` });
-    ElMessage.success("代理已设置");
+    if (proxyEnabled.value) {
+      // 关闭代理
+      await invoke('my_custom_command', { command: "git config --global --unset http.proxy" });
+      await invoke('my_custom_command', { command: "git config --global --unset https.proxy" });
+      ElMessage.success("代理已关闭");
+      proxyEnabled.value = false;
+    } else {
+      // 开启代理
+      const proxyUrl = proxy_ip.value;
+      await invoke('my_custom_command', { command: `git config --global http.proxy ${proxyUrl}` });
+      await invoke('my_custom_command', { command: `git config --global https.proxy ${proxyUrl}` });
+      ElMessage.success("代理已开启");
+      proxyEnabled.value = true;
+    }
   } catch (error) {
-    console.error("Error configuring proxy:", error);
-    ElMessage.error("Failed to configure proxy");
+    console.error("代理操作失败:", error);
+    ElMessage.error("代理操作失败");
   }
   closeLoading();
 }
 
-async function closeGitProxy() {
-  openLoading();
-  try {
-    await invoke('my_custom_command', { command: "git config --global --unset http.proxy" });
-    await invoke('my_custom_command', { command: "git config --global --unset https.proxy" });
-    ElMessage.success("代理已取消");
-  } catch (error) {
-    console.error("Error removing proxy:", error);
-    ElMessage.error("操作失败");
+// 保留这些函数以保持兼容性
+async function enableGitProxy() {
+  if (!proxyEnabled.value) {
+    await toggleProxy();
   }
-  closeLoading();
+}
+
+async function closeGitProxy() {
+  if (proxyEnabled.value) {
+    await toggleProxy();
+  }
 }
 
 async function getGitProxyInfo() {
@@ -97,6 +124,8 @@ async function openSetProxyDialog() {
 
 defineExpose({
   proxy_ip,
+  proxyEnabled,
+  toggleProxy,
   enableGitProxy,
   closeGitProxy,
   getGitProxyInfo,
@@ -105,45 +134,113 @@ defineExpose({
 </script>
 
 <template>
-  <div class="button-group">
-    <button @click="enableGitProxy" class="action-button">开启本地代理</button>
-    <button @click="closeGitProxy" class="action-button">关闭本地代理</button>
-    <button @click="getGitProxyInfo" class="action-button">查看代理</button>
-    <button @click="openSetProxyDialog" class="action-button">设置代理</button>
+  <div class="proxy-manager-container">
+    <div class="proxy-info">
+      <h2>Git 代理管理</h2>
+      <div class="current-proxy">
+        当前代理: {{ proxy_ip }}
+        <div class="proxy-status" :class="{ 'enabled': proxyEnabled, 'disabled': !proxyEnabled }">
+          状态: {{ proxyEnabled ? '已启用' : '未启用' }}
+        </div>
+      </div>
+    </div>
+    
+    <div class="button-group">
+      <el-button 
+        :type="proxyEnabled ? 'danger' : 'primary'" 
+        @click="toggleProxy" 
+        class="action-button"
+        :icon="proxyEnabled ? CloseBold : Connection">
+        {{ proxyEnabled ? '关闭本地代理' : '开启本地代理' }}
+      </el-button>
+      
+      <el-button 
+        type="warning" 
+        @click="openSetProxyDialog" 
+        class="action-button"
+        :icon="Setting">
+        设置代理
+      </el-button>
+    </div>
   </div>
 </template>
 
 <style scoped>
-.button-group {
+.proxy-manager-container {
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  gap: 20px;
-  width: 100%;
+  align-items: center;
+  padding: 20px;
+  background-color: #f5f7fa;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  max-width: 600px;
+  margin: 0 auto;
 }
 
-button {
-  border-radius: 8px;
-  border: 1px solid #bbb;
-  padding: 0.8em 1.4em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  color: #333;
-  background-color: #909399;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  flex: 1;
-  min-width: 160px;
+.proxy-info {
+  width: 100%;
+  margin-bottom: 24px;
   text-align: center;
 }
 
-button:hover {
-  background-color: #3d4748;
-  color: #fff;
+h2 {
+  color: #303133;
+  margin-bottom: 16px;
+  font-size: 24px;
+  font-weight: 600;
 }
 
-button:active {
-  background-color: #9ea6a7;
+.current-proxy {
+  background-color: #ecf5ff;
+  color: #409eff;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  margin-bottom: 20px;
+  border-left: 4px solid #409eff;
+}
+
+.proxy-status {
+  margin-top: 8px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  display: inline-block;
+  font-weight: 500;
+}
+
+.proxy-status.enabled {
+  background-color: #f0f9eb;
+  color: #67c23a;
+  border: 1px solid #e1f3d8;
+}
+
+.proxy-status.disabled {
+  background-color: #fef0f0;
+  color: #f56c6c;
+  border: 1px solid #fde2e2;
+}
+
+.button-group {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  width: 100%;
+  margin-top: 10px;
+}
+
+.action-button {
+  height: 48px;
+  font-size: 16px;
+  font-weight: 500;
+  border-radius: 8px;
+  transition: all 0.3s;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+@media (max-width: 600px) {
+  .button-group {
+    grid-template-columns: 1fr;
+  }
 }
 </style>
