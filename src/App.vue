@@ -9,8 +9,10 @@ import { getCurrentWindow,  } from '@tauri-apps/api/window';
 // 系统设置的缩放率
 const scaleFactor = ref(1);
 const windowsHeight = ref(0);
+
+const tabsHeight = ref(65);
 // 计算高度（使用 computed 让高度保持响应式）
-const tabsContentHeight = computed(() => `${(windowsHeight.value/scaleFactor.value)  - 65}px`);
+const tabsContentHeight = computed(() => `${(windowsHeight.value/scaleFactor.value)  - tabsHeight.value}px`);
 
 // 使用 TabsInstance 类型声明 ref
 const tabsRef = ref<TabsInstance | null>(null);

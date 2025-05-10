@@ -40,12 +40,15 @@ const showImagePreview = ref(false);
 const currentImageUrl = ref<string[]>([]);
 const currentIndex = ref(0);
 
+// 导航栏高度
+const tabsHeight = ref(65);
+const toolbarHeight = ref(32);
 
 // 系统设置的缩放率
 const scaleFactor = ref(1);
 const windowsHeight = ref(0);
-// 计算高度（使用 computed 让高度保持响应式）   改了样式这里要对应  这里的高度是减去了  65 是  导航栏的高度  32是  搜索框的高度  10是  间距
-const scrollbarHeight = computed(() => `${(windowsHeight.value/scaleFactor.value)  - 65 - 32- 10 }px`);
+// 计算高度（使用 computed 让高度保持响应式）   改了样式这里要对应     10是  间距
+const scrollbarHeight = computed(() => `${(windowsHeight.value/scaleFactor.value)  - tabsHeight.value - toolbarHeight.value- 10 }px`);
 
 const scrollRef = ref<any | null>(null);
 
