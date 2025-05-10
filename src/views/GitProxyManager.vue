@@ -61,6 +61,12 @@ async function checkProxyStatus() {
   }
 }
 
+async function setGitProxy() {
+  const proxyUrl = proxy_ip.value;
+  await invoke('my_custom_command', { command: `git config --global http.proxy ${proxyUrl}` });
+  await invoke('my_custom_command', { command: `git config --global https.proxy ${proxyUrl}` });
+}
+
 async function disableProxy() {
   await invoke('my_custom_command', { command: "git config --global --unset http.proxy" });
   await invoke('my_custom_command', { command: "git config --global --unset https.proxy" });
@@ -69,11 +75,9 @@ async function disableProxy() {
 }
 
 async function enableProxy() {
-  const proxyUrl = proxy_ip.value;
-  await invoke('my_custom_command', { command: `git config --global http.proxy ${proxyUrl}` });
-  await invoke('my_custom_command', { command: `git config --global https.proxy ${proxyUrl}` });
-  ElMessage.success("代理已开启");
+  await setGitProxy();
   proxyEnabled.value = true;
+  ElMessage.success("代理已开启");
 }
 
 async function toggleProxy() {
@@ -114,7 +118,7 @@ async function openSetProxyDialog() {
 
       // 如果代理正在启用，更新下代理地址
       if (proxyEnabled.value) {
-        await enableProxy();
+        await setGitProxy();
       }
       
     } catch (error) {
