@@ -155,7 +155,7 @@ defineExpose({
         <el-icon @click="getGitProxyInfo" class="view-btn" style="position: absolute; top: 0; right: 0;"><QuestionFilled /></el-icon>
       </div>
 
-      <el-tooltip content="修改代理配置" placement="QuestionFilled">
+      <el-tooltip content="修改代理配置" placement="top">
         <el-button type="warning" @click="openSetProxyDialog" :icon="EditPen" circle class="setting-proxy-btn" />
       </el-tooltip>
 

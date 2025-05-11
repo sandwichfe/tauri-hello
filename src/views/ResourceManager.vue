@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted,onUnmounted,computed } from 'vue';
 import { ElButton, ElTable, ElTableColumn, ElInput, ElMessage, ElIcon } from 'element-plus';
-import { ArrowLeft } from '@element-plus/icons-vue';
+import { ArrowLeft, Folder, VideoCamera, Headset, Picture, Document } from '@element-plus/icons-vue';
 import { invoke, convertFileSrc } from '@tauri-apps/api/core';
 import { open } from '@tauri-apps/plugin-dialog';
 import { readTextFile, writeTextFile, BaseDirectory, mkdir, exists } from '@tauri-apps/plugin-fs';
@@ -78,11 +78,11 @@ const canGoBack = () => pathHistory.value.length > 0;
 
 // 文件类型图标映射
 const getFileIcon = (row: any) => {
-  if (row.is_dir) return '📁';
-  if (isVideoFile(row.name)) return '🎥';
-  if (isAudioFile(row.name)) return '🔊';
-  if (isImageFile(row.name)) return '🖼️';
-  return '📄';
+  if (row.is_dir) return Folder;
+  if (isVideoFile(row.name)) return VideoCamera;
+  if (isAudioFile(row.name)) return Headset;
+  if (isImageFile(row.name)) return Picture;
+  return Document;
 };
 
 // 判断是否为视频文件
@@ -353,7 +353,7 @@ const applySorting = (prop: string, order: string) => {
         sortable="custom"
       >
         <template #default="{ row }">
-          <span>{{ getFileIcon(row) }}</span>
+          <el-icon><component :is="getFileIcon(row)" /></el-icon>
         </template>
       </el-table-column>
       <el-table-column 
@@ -396,6 +396,11 @@ const applySorting = (prop: string, order: string) => {
 </template>
 
 <style scoped>
+.resource-manager .el-icon {
+  color: #a08dba;
+  font-size: 22px;
+}
+
 .resource-manager {
   height: 100%;
   display: flex;
@@ -416,6 +421,14 @@ const applySorting = (prop: string, order: string) => {
 
 .back-button {
   min-width: 40px;
+  background-color: #fff;
+  border: 1px solid #dcdfe6;
+  border-radius: 4px;
+}
+
+.back-button:hover {
+  background-color: #f5f7fa;
+  border: 1px solid #dcdfe6;
 }
 
 
