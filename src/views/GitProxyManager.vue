@@ -11,6 +11,7 @@ const configPath = ref("");
 const proxyEnabled = ref(false);
 const proxyButtonStatus = ref(false);
 
+
 onMounted(async () => {
   try {
     configPath.value = 'proxyConfig.json';
@@ -142,9 +143,9 @@ defineExpose({
 
     <div class="current-proxy">
 
-      <div>git代理地址: {{ proxy_ip }}</div>
-
-      <el-icon @click="getGitProxyInfo" class="view-btn"><QuestionFilled /></el-icon>
+      <div style="position: relative; padding-right: 18px;">git代理地址: {{ proxy_ip }}
+        <el-icon @click="getGitProxyInfo" class="view-btn" style="position: absolute; top: 0; right: 0;"><QuestionFilled /></el-icon>
+      </div>
 
       <el-tooltip content="修改代理配置" placement="QuestionFilled">
         <el-button type="warning" @click="openSetProxyDialog" :icon="EditPen" circle class="setting-proxy-btn" />
@@ -189,6 +190,8 @@ h2 {
 /* 新增：设置代理按钮样式 */
 .setting-proxy-btn {
   transition: all 0.3s;
+  background-color: #b7b7b7;
+  border: none;
 }
 
 .proxy-switch-btn {
@@ -198,6 +201,7 @@ margin-left: auto;
 
 .view-btn {
   cursor: pointer;
+  color: #409eff;
 }
 
 .toggle-button {
@@ -209,14 +213,4 @@ margin-left: auto;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
-/* 移动端适配调整 */
-@media (max-width: 600px) {
-  .current-proxy {
-    flex-wrap: wrap;
-  }
-  .setting-proxy-btn {
-    margin-left: 0;
-    margin-top: 8px;
-  }
-}
 </style>
