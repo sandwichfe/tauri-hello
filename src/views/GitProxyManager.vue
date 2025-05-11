@@ -97,10 +97,17 @@ async function toggleProxy() {
   closeLoading();
 }
 
+const dialogVisible = ref(false);
+const tempProxyUrl = ref("");
+
 async function openSetProxyDialog() {
-  const newProxyUrl = prompt("请输入新的代理地址", proxy_ip.value);
-  if (newProxyUrl) {
-    proxy_ip.value = newProxyUrl;
+  tempProxyUrl.value = proxy_ip.value;
+  dialogVisible.value = true;
+}
+
+async function confirmProxyChange() {
+  if (tempProxyUrl.value) {
+    proxy_ip.value = tempProxyUrl.value;
     try {
       // 确保目录存在
       const dirExists = await exists('', { baseDir: BaseDirectory.AppConfig });
@@ -127,6 +134,7 @@ async function openSetProxyDialog() {
       ElMessage.error(`保存代理配置失败: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
+  dialogVisible.value = false;
 }
 
 defineExpose({
@@ -154,6 +162,18 @@ defineExpose({
       <el-switch v-model="proxyButtonStatus" @change="toggleProxy" class="proxy-switch-btn" />
 
     </div>
+
+    <el-dialog v-model="dialogVisible" title="修改代理地址" width="30%">
+      <el-input v-model="tempProxyUrl" placeholder="请输入代理地址" />
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="dialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="confirmProxyChange">
+            确认
+          </el-button>
+        </span>
+      </template>
+    </el-dialog>
 
   </div>
 </template>
