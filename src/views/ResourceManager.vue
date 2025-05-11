@@ -19,7 +19,9 @@ interface FileItem {
 }
 
 // 视频文件扩展名
-const videoExtensions = ['.mp4', '.webm', '.ogg', '.mov', '.avi',".mp3"];
+const videoExtensions = ['.mp4', '.webm', '.ogg', '.mov', '.avi'];
+// 音频文件扩展名
+const audioExtensions = ['.mp3', '.wav', '.aac', '.flac', '.m4a'];
 // 图片文件扩展名
 const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'];
 
@@ -78,6 +80,7 @@ const canGoBack = () => pathHistory.value.length > 0;
 const getFileIcon = (row: any) => {
   if (row.is_dir) return '📁';
   if (isVideoFile(row.name)) return '🎥';
+  if (isAudioFile(row.name)) return '🔊';
   if (isImageFile(row.name)) return '🖼️';
   return '📄';
 };
@@ -85,6 +88,11 @@ const getFileIcon = (row: any) => {
 // 判断是否为视频文件
 const isVideoFile = (filename: string) => {
   return videoExtensions.some(ext => filename.toLowerCase().endsWith(ext));
+};
+
+// 判断是否为音频文件
+const isAudioFile = (filename: string) => {
+  return audioExtensions.some(ext => filename.toLowerCase().endsWith(ext));
 };
 
 // 判断是否为图片文件
@@ -197,6 +205,8 @@ const handleRowClick = (row: any) => {
     currentPath.value = row.path;
     openFolder(row.path, true);
   } else if (isVideoFile(row.name)) {
+    previewVideo(row.path);
+  } else if (isAudioFile(row.name)) {
     previewVideo(row.path);
   } else if (isImageFile(row.name)) {
     previewImage(row.path);
