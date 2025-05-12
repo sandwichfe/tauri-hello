@@ -5,6 +5,8 @@ import ElementPlus from 'element-plus'
 import 'element-plus/dist/index.css'
 
 import { createPinia } from 'pinia';
+import router from './router';
+
 
 // 导入预加载功能
 import { preloadResources, openLoading, closeLoading } from './utils/loadingUtil';
@@ -19,6 +21,9 @@ app.use(ElementPlus);
 const pinia = createPinia();
 // 使用Pinia
 app.use(pinia);
+
+// 使用路由
+app.use(router);
 
 // 在挂载应用前先预加载资源
 async function initApp() {

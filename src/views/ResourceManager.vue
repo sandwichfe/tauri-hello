@@ -8,7 +8,8 @@ import { readTextFile, writeTextFile, BaseDirectory, mkdir, exists } from '@taur
 import VideoPreview from '../components/VideoPreview.vue';
 import ImagePreview from '../components/ImagePreview.vue';
 import { openLoading, closeLoading } from "../../src/utils/loadingUtil";
-import { getCurrentWindow,  } from '@tauri-apps/api/window';
+import { getCurrentWindow,Window   } from '@tauri-apps/api/window';
+import { Webview } from "@tauri-apps/api/webview"
 
 interface FileItem {
   is_dir: boolean;
@@ -213,6 +214,70 @@ const handleRowClick = (row: any) => {
   }
 };
 
+// 处理拖拽开始事件
+const handleDragStart = (row: FileItem, event: DragEvent) => {
+  // 设置拖拽数据
+  if (event.dataTransfer) {
+    // 将文件信息转换为JSON字符串
+    event.dataTransfer.setData('application/json', JSON.stringify(row));
+    // 设置拖拽效果
+    event.dataTransfer.effectAllowed = 'copy';
+  }
+};
+
+// 打开文件分类窗口
+const openClassifierWindow = async () => {
+  try {
+    // 检查窗口是否已存在
+    const appWindow = new Window('file-classifier');
+    const webview = new Webview(appWindow, 'file-classifier-webview', {
+      url: '/#/file-classifier',
+      width: 800,
+      height: 600,
+      x: 100,
+      y: 100,
+      dragDropEnabled: true,
+      acceptFirstMouse: true
+    });
+
+    webview.onDragDropEvent((event) => {
+      // 处理拖拽事件
+      console.log('拖拽事件:', event);
+      
+      // 获取拖拽的文件数据
+      const files = event.payload.files;
+      if (files && files.length > 0) {
+        const file = files[0];
+        const fileData = {
+          is_dir: false,
+          name: file.name,
+          size: file.size,
+          modified_time: new Date(file.lastModified).toISOString(),
+          path: file.path
+        };
+        
+        // 将文件数据传递给FileClassifier组件
+        webview.emit('file-dropped', fileData);
+      }
+    });
+
+    
+    // 监听窗口创建完成事件
+    webview.once('tauri://created', () => {
+      console.log('文件分类窗口已创建');
+    });
+    
+    // 监听窗口错误事件
+    webview.once('tauri://error', (e) => {
+      console.error('文件分类窗口创建失败:', e);
+      ElMessage.error('打开文件分类窗口失败');
+    });
+  } catch (error) {
+    console.error('打开文件分类窗口失败:', error);
+    ElMessage.error('打开文件分类窗口失败');
+  }
+};
+
 // 处理排序变化
 const handleSortChange = ({ column, prop, order }: any) => {
   sortColumn.value = prop;
@@ -337,6 +402,13 @@ const applySorting = (prop: string, order: string) => {
           <el-button @click="selectFolder">选择文件夹</el-button>
         </template>
       </el-input>
+      <el-button 
+        type="primary" 
+        @click="openClassifierWindow"
+        class="classifier-button"
+      >
+        打开分类窗口
+      </el-button>
     </div>
     
     <el-scrollbar  :native="true"  ref="scrollRef">
@@ -345,6 +417,7 @@ const applySorting = (prop: string, order: string) => {
       style="width: 100%" 
       @row-dblclick="handleRowClick"
       @sort-change="handleSortChange"
+      row-key="path"
     >
       <el-table-column 
         label="类型" 
@@ -360,7 +433,17 @@ const applySorting = (prop: string, order: string) => {
         prop="name" 
         label="名称"
         sortable="custom" 
-      />
+      >
+        <template #default="{ row }">
+          <div 
+            class="draggable-cell"
+            draggable="true"
+            @dragstart="handleDragStart(row, $event)"
+          >
+            {{ row.name }}
+          </div>
+        </template>
+      </el-table-column>
       <el-table-column 
         label="大小" 
         width="120"
@@ -450,6 +533,21 @@ const applySorting = (prop: string, order: string) => {
   border-top: 0.1px solid #ebeef5;
   text-align: right;
   color: #909399;
+}
+
+.classifier-button {
+  margin-left: 10px;
+}
+
+.draggable-cell {
+  cursor: move;
+  padding: 5px 0;
+  width: 100%;
+}
+
+.draggable-cell:hover {
+  background-color: #f5f7fa;
+  border-radius: 4px;
 }
 
 </style>
