@@ -111,8 +111,11 @@ onMounted(async () => {
   // 添加窗口大小变化监听
   window.addEventListener('resize', handleResize);
   
+
   // 监听来自Webview的拖拽文件事件
-  unlistenDragDrop = await listen<FileItem>('file-dropped', (event) => {
+  unlistenDragDrop = await listen<FileItem>('tauri://drag-enter', (event) => {
+    console.log(`Got error, payload: ${event.payload}`);
+
     const file = event.payload;
     // 将文件数据设置为可拖拽状态
     draggedFile.value = file;

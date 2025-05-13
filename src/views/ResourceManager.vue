@@ -236,7 +236,8 @@ const openClassifierWindow = async () => {
       height: 600,
       x: 100,
       y: 100,
-      dragDropEnabled: true,
+      // 这个要设置为false，不然会有冲突 接受不了拖拽事件
+      dragDropEnabled: false,
       acceptFirstMouse: true
     });
 
