@@ -58,9 +58,9 @@ const handleDrop = (event: DragEvent, categoryId: number) => {
         const exists = category.files.some((f: FileItem) => f.path === file.path);
         if (!exists) {
           category.files.push(file);
-          ElMessage.success(`已将 ${file.name} 添加到 ${category.name} 分类`);
+          ElMessage.success(`添加成功`);
         } else {
-          ElMessage.warning(`${file.name} 已存在于 ${category.name} 分类`);
+          ElMessage.warning(`已存在${file.name}`);
         }
       }
     } catch (error) {
