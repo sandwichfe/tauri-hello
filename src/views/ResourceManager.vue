@@ -10,7 +10,6 @@ import ImagePreview from '../components/ImagePreview.vue';
 import { openLoading, closeLoading } from "../../src/utils/loadingUtil";
 import { getCurrentWindow,Window,PhysicalSize    } from '@tauri-apps/api/window';
 import { Webview } from "@tauri-apps/api/webview"
-import { fa } from 'element-plus/es/locales.mjs';
 
 interface FileItem {
   is_dir: boolean;
@@ -56,6 +55,8 @@ const scrollbarHeight = computed(() => `${(windowsHeight.value/scaleFactor.value
 
 const scrollRef = ref<any | null>(null);
 
+// 分类窗口
+const openClassWindowStatus = ref(false);
 
 
 // 计算滚动区域高度
@@ -226,38 +227,56 @@ const handleDragStart = (row: FileItem, event: DragEvent) => {
   }
 };
 
+
+
 // 打开文件分类窗口
 const openClassifierWindow = async () => {
   try {
-    // 检查窗口是否已存在
-    // const existingWindow = await Window.getByLabel('file-classifier');
-    // if (existingWindow) {
-    //   await existingWindow.setFocus();
-    //   return;
-    // }
+    const classWindows = await Window.getByLabel("file-classifier");
+    if (!classWindows) return;
     
+    if (openClassWindowStatus.value) {
+      await classWindows.hide();
+    } else {
+      await classWindows.show();
+    }
+    openClassWindowStatus.value = !openClassWindowStatus.value;
+  } catch (error) {
+    console.error('文件分类窗口操作失败:', error);
+    ElMessage.error('文件分类窗口操作失败');
+  }
+};
+
+
+
+// 打开文件分类窗口
+const createClassifierWindow = async () => {
+  try {
     const webviewWidth = 800;
     const webviewHeight = 600;
 
-    const appWindow = new Window('file-classifier');
+    const appWindow = new Window('file-classifier',{
+      visible: false,
+      // decorations: false,
+      resizable: true,
+      width: webviewWidth,
+      height: webviewHeight,
+    });
+    // appWindow.hide();
     const webview = new Webview(appWindow, 'file-classifier-webview', {
       url: '/#/file-classifier',
       width: webviewWidth,
       height: webviewHeight,
-      // 这个是。。。。  webview在window的位置
       x: 0, 
       y: 0,
-      // 这个要设置为false，不然会有冲突 接受不了拖拽事件
       dragDropEnabled: false,
       acceptFirstMouse: true
     });
 
-    // 监听窗口创建完成事件
     webview.once('tauri://created', () => {
       console.log('文件分类窗口已创建');
     });
     
-    // 监听窗口错误事件
     webview.once('tauri://error', (e) => {
       console.error('文件分类窗口创建失败:', e);
       ElMessage.error('打开文件分类窗口失败');
@@ -265,6 +284,18 @@ const openClassifierWindow = async () => {
   } catch (error) {
     console.error('打开文件分类窗口失败:', error);
     ElMessage.error('打开文件分类窗口失败');
+  }
+};
+
+// 初始化文件分类窗口
+const initFileClassifierWindow = async () => {
+  // 因为是异步调用 延迟3秒 其他初始化完成后再调用
+  try {
+    setTimeout(async () => {
+      await createClassifierWindow();
+    }, 3000);
+  } catch (error) {
+    console.error('初始化文件分类窗口失败:', error);
   }
 };
 
@@ -320,6 +351,8 @@ onMounted(async () => {
     calculateScrollbarHeight();
     // 添加窗口大小变化监听
     window.addEventListener('resize', handleResize);
+    // 异步初始化文件分类窗口
+    initFileClassifierWindow();
   } catch (error) {
     console.log('首次运行或配置文件不存在，使用默认值');
   }
