@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue';
-import { ElButton, ElCard, ElTag, ElDivider, ElMessage } from 'element-plus';
-import { Folder, Delete } from '@element-plus/icons-vue';
-import { convertFileSrc } from '@tauri-apps/api/core';
-import { getCurrentWindow, Window } from '@tauri-apps/api/window';
+import { ElButton, ElDivider, ElMessage } from 'element-plus';
+import {  Delete } from '@element-plus/icons-vue';
+import { getCurrentWindow } from '@tauri-apps/api/window';
 import { listen, UnlistenFn } from '@tauri-apps/api/event';
 
 interface FileItem {
@@ -15,7 +14,7 @@ interface FileItem {
 }
 
 // 分类列表
-const categories = ref([
+const categories = ref<Array<{id: number, name: string, files: FileItem[]}>>([
   { id: 1, name: '图片', files: [] },
   { id: 2, name: '视频', files: [] },
   { id: 3, name: '音频', files: [] },
@@ -197,6 +196,7 @@ onUnmounted(() => {
   display: flex;
   flex-wrap: wrap;
   gap: 20px;
+  justify-content: center;
 }
 
 .category-card {
@@ -206,8 +206,10 @@ onUnmounted(() => {
   background-color: #fff;
   transition: all 0.3s;
   height: 300px;
+  width: 100px;
   display: flex;
   flex-direction: column;
+  flex-shrink: 0;
 }
 
 .category-header {

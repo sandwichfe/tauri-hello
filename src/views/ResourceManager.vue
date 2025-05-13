@@ -8,8 +8,9 @@ import { readTextFile, writeTextFile, BaseDirectory, mkdir, exists } from '@taur
 import VideoPreview from '../components/VideoPreview.vue';
 import ImagePreview from '../components/ImagePreview.vue';
 import { openLoading, closeLoading } from "../../src/utils/loadingUtil";
-import { getCurrentWindow,Window   } from '@tauri-apps/api/window';
+import { getCurrentWindow,Window,PhysicalSize    } from '@tauri-apps/api/window';
 import { Webview } from "@tauri-apps/api/webview"
+import { fa } from 'element-plus/es/locales.mjs';
 
 interface FileItem {
   is_dir: boolean;
@@ -229,46 +230,28 @@ const handleDragStart = (row: FileItem, event: DragEvent) => {
 const openClassifierWindow = async () => {
   try {
     // 检查窗口是否已存在
-    const existingWindow = await Window.getByLabel('file-classifier');
-    if (existingWindow) {
-      await existingWindow.setFocus();
-      return;
-    }
+    // const existingWindow = await Window.getByLabel('file-classifier');
+    // if (existingWindow) {
+    //   await existingWindow.setFocus();
+    //   return;
+    // }
     
+    const webviewWidth = 800;
+    const webviewHeight = 600;
+
     const appWindow = new Window('file-classifier');
     const webview = new Webview(appWindow, 'file-classifier-webview', {
       url: '/#/file-classifier',
-      width: 800,
-      height: 600,
-      x: 100,
-      y: 100,
+      width: webviewWidth,
+      height: webviewHeight,
+      // 这个是。。。。  webview在window的位置
+      x: 0, 
+      y: 0,
       // 这个要设置为false，不然会有冲突 接受不了拖拽事件
       dragDropEnabled: false,
       acceptFirstMouse: true
     });
 
-    webview.onDragDropEvent((event) => {
-      // 处理拖拽事件
-      console.log('拖拽事件:', event);
-      
-      // 获取拖拽的文件数据
-      const files = event.payload.files;
-      if (files && files.length > 0) {
-        const file = files[0];
-        const fileData = {
-          is_dir: false,
-          name: file.name,
-          size: file.size,
-          modified_time: new Date(file.lastModified).toISOString(),
-          path: file.path
-        };
-        
-        // 将文件数据传递给FileClassifier组件
-        webview.emit('file-dropped', fileData);
-      }
-    });
-
-    
     // 监听窗口创建完成事件
     webview.once('tauri://created', () => {
       console.log('文件分类窗口已创建');
