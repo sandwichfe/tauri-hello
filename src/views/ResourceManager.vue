@@ -229,6 +229,12 @@ const handleDragStart = (row: FileItem, event: DragEvent) => {
 const openClassifierWindow = async () => {
   try {
     // 检查窗口是否已存在
+    const existingWindow = await Window.getByLabel('file-classifier');
+    if (existingWindow) {
+      await existingWindow.setFocus();
+      return;
+    }
+    
     const appWindow = new Window('file-classifier');
     const webview = new Webview(appWindow, 'file-classifier-webview', {
       url: '/#/file-classifier',

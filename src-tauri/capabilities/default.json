@@ -22,6 +22,7 @@
     "core:window:allow-show",
     "core:window:allow-create",
     "core:window:allow-start-dragging",
+    "core:window:allow-set-focus",
     "core:webview:allow-create-webview",
     "shell:allow-open",
     "dialog:default",
