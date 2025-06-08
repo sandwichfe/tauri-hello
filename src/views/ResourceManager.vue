@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted,onUnmounted,computed } from 'vue';
+import { ref, onMounted,onUnmounted,computed, nextTick } from 'vue';
 import { ElButton, ElTable, ElTableColumn, ElInput, ElMessage, ElIcon } from 'element-plus';
 import { ArrowLeft, Folder, VideoCamera, Headset, Picture, Document } from '@element-plus/icons-vue';
 import { invoke, convertFileSrc } from '@tauri-apps/api/core';
@@ -30,6 +30,7 @@ const currentPath = ref('');
 const fileList = ref<FileItem[]>([]);
 const imageFiles = ref<Map<string, number>>(new Map());
 const pathHistory = ref<string[]>([]);
+const scrollPositions = ref<Map<string, number>>(new Map()); // To store scroll positions for paths
 const configPath = ref('pathConfig.json');
 
 // 排序相关
@@ -157,9 +158,10 @@ const selectFolder = async () => {
       currentPath.value = selected as string;
       // 保存路径配置
       await savePathConfig();
-      // 清空历史记录  
+      // 清空历史记录 and scroll positions when selecting a new root folder
       pathHistory.value = [];
-      await openFolder(currentPath.value);
+      scrollPositions.value.clear();
+      await openFolder(currentPath.value, false); // false: not navigating back
     }
   } catch (error) {
     ElMessage.error('选择文件夹失败');
@@ -168,21 +170,44 @@ const selectFolder = async () => {
 };
 
 // 打开文件夹
-const openFolder = async (path: string, addToHistory = true) => {
+const openFolder = async (path: string, isNavigatingBack = false) => {
   try {
     const files = await invoke<FileItem[]>('read_directory', { path });
     fileList.value = files;
     imageFiles.value = new Map(files
   .filter(file => !file.is_dir && isImageFile(file.name))
   .map((file, index) => [file.path, index]));
-    if (addToHistory && currentPath.value) {
-      pathHistory.value.push(currentPath.value);
+    // Save scroll position for the *previous* path before updating currentPath
+    const oldPath = currentPath.value;
+    if (oldPath && scrollRef.value?.wrapRef) {
+      scrollPositions.value.set(oldPath, scrollRef.value.wrapRef.scrollTop);
     }
-    currentPath.value = path;
+
+    // Manage navigation history
+    // If navigating forward (not going back) and the old path is different from the new path, add the old path to history.
+    if (!isNavigatingBack && oldPath && oldPath !== path) {
+      pathHistory.value.push(oldPath);
+    }
+    currentPath.value = path; // Set the new current path
     
     // 应用之前的排序（如果有）
     if (sortColumn.value && sortOrder.value) {
       applySorting(sortColumn.value, sortOrder.value);
+    }
+
+    // Ensure DOM is updated before recalculating scrollbar height
+    await nextTick(); 
+    await calculateScrollbarHeight(); // Recalculate and apply height
+
+    // Restore scroll position for the new path
+    await nextTick(); // Ensure scrollbar is ready
+    if (scrollRef.value?.wrapRef) {
+      const savedScrollTop = scrollPositions.value.get(path);
+      if (typeof savedScrollTop === 'number') {
+        scrollRef.value.wrapRef.scrollTop = savedScrollTop;
+      } else {
+        scrollRef.value.wrapRef.scrollTop = 0; // Default to top if no saved position
+      }
     }
   } catch (error) {
     ElMessage.error('读取文件夹失败');
@@ -193,11 +218,13 @@ const openFolder = async (path: string, addToHistory = true) => {
 // 返回上一级目录
 const goBack = async () => {
   if (canGoBack()) {
-    const previousPath = pathHistory.value[pathHistory.value.length - 2];
-    if (previousPath) {
-      // 移除当前路径之后的所有历史记录
-      pathHistory.value = pathHistory.value.slice(0, -1);
-      await openFolder(previousPath, false);
+    const previousPath = pathHistory.value.pop(); // Pop the last path from history
+    if (previousPath !== undefined) {
+      // Before navigating back, save current scroll position
+      if (currentPath.value && scrollRef.value?.wrapRef) {
+        scrollPositions.value.set(currentPath.value, scrollRef.value.wrapRef.scrollTop);
+      }
+      await openFolder(previousPath, true); // True: indicates this is a 'back' navigation
     }
   }
 };
@@ -205,8 +232,9 @@ const goBack = async () => {
 // 处理行双击事件
 const handleRowClick = (row: any) => {
   if (row.is_dir) {
-    currentPath.value = row.path;
-    openFolder(row.path, true);
+    // currentPath.value is the old path here. row.path is the new path.
+    // false: indicates this is a forward navigation, not going back.
+    openFolder(row.path, false);
   } else if (isVideoFile(row.name)) {
     previewVideo(row.path);
   } else if (isAudioFile(row.name)) {
@@ -344,7 +372,9 @@ onMounted(async () => {
     const { currentPath: savedPath } = JSON.parse(config);
     if (savedPath) {
       currentPath.value = savedPath;
-      await openFolder(currentPath.value);
+      pathHistory.value = []; // Initialize history as empty
+      scrollPositions.value.clear(); // Clear scroll positions on initial load
+      await openFolder(currentPath.value, false); // false: not navigating back
     }
     
     // 初始计算高度
