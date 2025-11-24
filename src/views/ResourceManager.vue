@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted,onUnmounted,computed, nextTick } from 'vue';
+import { ref, onMounted,onUnmounted,computed } from 'vue';
 import { ElButton, ElTable, ElTableColumn, ElInput, ElMessage, ElIcon } from 'element-plus';
 import { ArrowLeft, Folder, VideoCamera, Headset, Picture, Document } from '@element-plus/icons-vue';
 import { invoke, convertFileSrc } from '@tauri-apps/api/core';
@@ -8,7 +8,7 @@ import { readTextFile, writeTextFile, BaseDirectory, mkdir, exists } from '@taur
 import VideoPreview from '../components/VideoPreview.vue';
 import ImagePreview from '../components/ImagePreview.vue';
 import { openLoading, closeLoading } from "../../src/utils/loadingUtil";
-import { getCurrentWindow,Window,PhysicalSize    } from '@tauri-apps/api/window';
+import { getCurrentWindow,Window   } from '@tauri-apps/api/window';
 import { Webview } from "@tauri-apps/api/webview"
 
 interface FileItem {
@@ -30,7 +30,6 @@ const currentPath = ref('');
 const fileList = ref<FileItem[]>([]);
 const imageFiles = ref<Map<string, number>>(new Map());
 const pathHistory = ref<string[]>([]);
-const scrollPositions = ref<Map<string, number>>(new Map()); // To store scroll positions for paths
 const configPath = ref('pathConfig.json');
 
 // 排序相关
@@ -56,8 +55,6 @@ const scrollbarHeight = computed(() => `${(windowsHeight.value/scaleFactor.value
 
 const scrollRef = ref<any | null>(null);
 
-// 分类窗口
-const openClassWindowStatus = ref(false);
 
 
 // 计算滚动区域高度
@@ -126,7 +123,7 @@ const previewImage = async (path: string) => {
     openLoading();
     const assetUrl = await convertFileSrc(path);
     console.log('assetUrl：', assetUrl);
-    currentImageUrl.value = await Promise.all(Array.from(imageFiles.value).map(async ([path, index]) => await convertFileSrc(path)));
+    currentImageUrl.value = await Promise.all(Array.from(imageFiles.value).map(async ([path]) => await convertFileSrc(path)));
     // 计算当前点击图片在imageFiles中的索引
     currentIndex.value = imageFiles.value.get(path) || 0;
     // 渲染图片预览
@@ -158,10 +155,9 @@ const selectFolder = async () => {
       currentPath.value = selected as string;
       // 保存路径配置
       await savePathConfig();
-      // 清空历史记录 and scroll positions when selecting a new root folder
+      // 清空历史记录  
       pathHistory.value = [];
-      scrollPositions.value.clear();
-      await openFolder(currentPath.value, false); // false: not navigating back
+      await openFolder(currentPath.value);
     }
   } catch (error) {
     ElMessage.error('选择文件夹失败');
@@ -170,44 +166,21 @@ const selectFolder = async () => {
 };
 
 // 打开文件夹
-const openFolder = async (path: string, isNavigatingBack = false) => {
+const openFolder = async (path: string, addToHistory = true) => {
   try {
     const files = await invoke<FileItem[]>('read_directory', { path });
     fileList.value = files;
     imageFiles.value = new Map(files
   .filter(file => !file.is_dir && isImageFile(file.name))
   .map((file, index) => [file.path, index]));
-    // Save scroll position for the *previous* path before updating currentPath
-    const oldPath = currentPath.value;
-    if (oldPath && scrollRef.value?.wrapRef) {
-      scrollPositions.value.set(oldPath, scrollRef.value.wrapRef.scrollTop);
+    if (addToHistory && currentPath.value) {
+      pathHistory.value.push(currentPath.value);
     }
-
-    // Manage navigation history
-    // If navigating forward (not going back) and the old path is different from the new path, add the old path to history.
-    if (!isNavigatingBack && oldPath && oldPath !== path) {
-      pathHistory.value.push(oldPath);
-    }
-    currentPath.value = path; // Set the new current path
+    currentPath.value = path;
     
     // 应用之前的排序（如果有）
     if (sortColumn.value && sortOrder.value) {
       applySorting(sortColumn.value, sortOrder.value);
-    }
-
-    // Ensure DOM is updated before recalculating scrollbar height
-    await nextTick(); 
-    await calculateScrollbarHeight(); // Recalculate and apply height
-
-    // Restore scroll position for the new path
-    await nextTick(); // Ensure scrollbar is ready
-    if (scrollRef.value?.wrapRef) {
-      const savedScrollTop = scrollPositions.value.get(path);
-      if (typeof savedScrollTop === 'number') {
-        scrollRef.value.wrapRef.scrollTop = savedScrollTop;
-      } else {
-        scrollRef.value.wrapRef.scrollTop = 0; // Default to top if no saved position
-      }
     }
   } catch (error) {
     ElMessage.error('读取文件夹失败');
@@ -218,13 +191,11 @@ const openFolder = async (path: string, isNavigatingBack = false) => {
 // 返回上一级目录
 const goBack = async () => {
   if (canGoBack()) {
-    const previousPath = pathHistory.value.pop(); // Pop the last path from history
-    if (previousPath !== undefined) {
-      // Before navigating back, save current scroll position
-      if (currentPath.value && scrollRef.value?.wrapRef) {
-        scrollPositions.value.set(currentPath.value, scrollRef.value.wrapRef.scrollTop);
-      }
-      await openFolder(previousPath, true); // True: indicates this is a 'back' navigation
+    const previousPath = pathHistory.value[pathHistory.value.length - 2];
+    if (previousPath) {
+      // 移除当前路径之后的所有历史记录
+      pathHistory.value = pathHistory.value.slice(0, -1);
+      await openFolder(previousPath, false);
     }
   }
 };
@@ -232,9 +203,8 @@ const goBack = async () => {
 // 处理行双击事件
 const handleRowClick = (row: any) => {
   if (row.is_dir) {
-    // currentPath.value is the old path here. row.path is the new path.
-    // false: indicates this is a forward navigation, not going back.
-    openFolder(row.path, false);
+    currentPath.value = row.path;
+    openFolder(row.path, true);
   } else if (isVideoFile(row.name)) {
     previewVideo(row.path);
   } else if (isAudioFile(row.name)) {
@@ -255,56 +225,52 @@ const handleDragStart = (row: FileItem, event: DragEvent) => {
   }
 };
 
-
-
 // 打开文件分类窗口
 const openClassifierWindow = async () => {
   try {
-    const classWindows = await Window.getByLabel("file-classifier");
-    if (!classWindows) return;
-    
-    if (openClassWindowStatus.value) {
-      await classWindows.hide();
-    } else {
-      await classWindows.show();
-    }
-    openClassWindowStatus.value = !openClassWindowStatus.value;
-  } catch (error) {
-    console.error('文件分类窗口操作失败:', error);
-    ElMessage.error('文件分类窗口操作失败');
-  }
-};
-
-
-
-// 打开文件分类窗口
-const createClassifierWindow = async () => {
-  try {
-    const webviewWidth = 800;
-    const webviewHeight = 600;
-
-    const appWindow = new Window('file-classifier',{
-      visible: false,
-      // decorations: false,
-      resizable: true,
-      width: webviewWidth,
-      height: webviewHeight,
-    });
-    // appWindow.hide();
+    // 检查窗口是否已存在
+    const appWindow = new Window('file-classifier');
     const webview = new Webview(appWindow, 'file-classifier-webview', {
       url: '/#/file-classifier',
-      width: webviewWidth,
-      height: webviewHeight,
-      x: 0, 
-      y: 0,
-      dragDropEnabled: false,
+      width: 800,
+      height: 600,
+      x: 100,
+      y: 100,
+      dragDropEnabled: true,
       acceptFirstMouse: true
     });
 
+    webview.onDragDropEvent((event) => {
+      // 处理拖拽事件
+      console.log('拖拽事件:', event);
+      
+      // 获取拖拽的文件数据
+      if (event.payload.type === 'drop' || event.payload.type === 'enter') {
+        const paths = event.payload.paths;
+        if (paths && paths.length > 0) {
+          const path = paths[0];
+          const name = path.split(/\\|\//).pop() || path;
+          const fileData = {
+            is_dir: false,
+            name,
+            size: 0,
+            modified_time: '',
+            path
+          };
+          
+          // 将文件数据传递给FileClassifier组件
+          webview.emit('file-dropped', fileData);
+        }
+      }
+    });
+
+    
+    // 监听窗口创建完成事件
     webview.once('tauri://created', () => {
       console.log('文件分类窗口已创建');
     });
     
+    // 监听窗口错误事件
     webview.once('tauri://error', (e) => {
       console.error('文件分类窗口创建失败:', e);
       ElMessage.error('打开文件分类窗口失败');
@@ -315,20 +281,8 @@ const createClassifierWindow = async () => {
   }
 };
 
-// 初始化文件分类窗口
-const initFileClassifierWindow = async () => {
-  // 因为是异步调用 延迟3秒 其他初始化完成后再调用
-  try {
-    setTimeout(async () => {
-      await createClassifierWindow();
-    }, 3000);
-  } catch (error) {
-    console.error('初始化文件分类窗口失败:', error);
-  }
-};
-
 // 处理排序变化
-const handleSortChange = ({ column, prop, order }: any) => {
+const handleSortChange = ({ prop, order }: any) => {
   sortColumn.value = prop;
   sortOrder.value = order;
   
@@ -372,17 +326,13 @@ onMounted(async () => {
     const { currentPath: savedPath } = JSON.parse(config);
     if (savedPath) {
       currentPath.value = savedPath;
-      pathHistory.value = []; // Initialize history as empty
-      scrollPositions.value.clear(); // Clear scroll positions on initial load
-      await openFolder(currentPath.value, false); // false: not navigating back
+      await openFolder(currentPath.value);
     }
     
     // 初始计算高度
     calculateScrollbarHeight();
     // 添加窗口大小变化监听
     window.addEventListener('resize', handleResize);
-    // 异步初始化文件分类窗口
-    initFileClassifierWindow();
   } catch (error) {
     console.log('首次运行或配置文件不存在，使用默认值');
   }

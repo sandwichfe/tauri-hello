@@ -1,8 +1,7 @@
 <script setup lang="ts">
-import { ref } from 'vue';
 import { ElMessage,ElDialog } from 'element-plus';
 
-const props = defineProps<{
+defineProps<{
   visible: boolean;
   videoUrl: string;
 }>();

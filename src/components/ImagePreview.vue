@@ -3,7 +3,7 @@ import { ElImageViewer  } from 'element-plus';
 import {  ref } from 'vue';
 
 // @ts-ignore-next-line
-const props = defineProps<{
+defineProps<{
   visible: boolean;
   imageUrls: string[];
   initialIndex: number;

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue';
 import { ElButton, ElDivider, ElMessage } from 'element-plus';
-import {  Delete } from '@element-plus/icons-vue';
+import { Delete } from '@element-plus/icons-vue';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { listen, UnlistenFn } from '@tauri-apps/api/event';
 
@@ -13,8 +13,8 @@ interface FileItem {
   path: string;
 }
 
-// 分类列表
-const categories = ref<Array<{id: number, name: string, files: FileItem[]}>>([
+interface Category { id: number; name: string; files: FileItem[] }
+const categories = ref<Category[]>([
   { id: 1, name: '图片', files: [] },
   { id: 2, name: '视频', files: [] },
   { id: 3, name: '音频', files: [] },
@@ -26,7 +26,7 @@ const categories = ref<Array<{id: number, name: string, files: FileItem[]}>>([
 const draggedFile = ref<FileItem | null>(null);
 
 // 处理拖拽进入分类区域
-const handleDragOver = (event: DragEvent, categoryId: number) => {
+const handleDragOver = (event: DragEvent) => {
   event.preventDefault();
   const target = event.currentTarget as HTMLElement;
   target.classList.add('drag-over');
@@ -58,9 +58,9 @@ const handleDrop = (event: DragEvent, categoryId: number) => {
         const exists = category.files.some((f: FileItem) => f.path === file.path);
         if (!exists) {
           category.files.push(file);
-          ElMessage.success(`添加成功`);
+          ElMessage.success(`已将 ${file.name} 添加到 ${category.name} 分类`);
         } else {
-          ElMessage.warning(`已存在${file.name}`);
+          ElMessage.warning(`${file.name} 已存在于 ${category.name} 分类`);
         }
       }
     } catch (error) {
@@ -110,11 +110,8 @@ onMounted(async () => {
   // 添加窗口大小变化监听
   window.addEventListener('resize', handleResize);
   
-
   // 监听来自Webview的拖拽文件事件
-  unlistenDragDrop = await listen<FileItem>('tauri://drag-enter', (event) => {
-    console.log(`Got error, payload: ${event.payload}`);
-
+  unlistenDragDrop = await listen<FileItem>('file-dropped', (event) => {
     const file = event.payload;
     // 将文件数据设置为可拖拽状态
     draggedFile.value = file;
@@ -142,7 +139,7 @@ onUnmounted(() => {
         v-for="category in categories" 
         :key="category.id"
         class="category-card"
-        @dragover="handleDragOver($event, category.id)"
+        @dragover="handleDragOver($event)"
         @dragleave="handleDragLeave($event)"
         @drop="handleDrop($event, category.id)"
       >
@@ -196,7 +193,6 @@ onUnmounted(() => {
   display: flex;
   flex-wrap: wrap;
   gap: 20px;
-  justify-content: center;
 }
 
 .category-card {
@@ -206,10 +202,8 @@ onUnmounted(() => {
   background-color: #fff;
   transition: all 0.3s;
   height: 300px;
-  width: 100px;
   display: flex;
   flex-direction: column;
-  flex-shrink: 0;
 }
 
 .category-header {

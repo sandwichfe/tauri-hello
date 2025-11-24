@@ -12,10 +12,10 @@
   "dependencies": {
     "@ffmpeg/ffmpeg": "*",
     "@ffmpeg/util": "*",
-    "@tauri-apps/api": "^2.5.0",
-    "@tauri-apps/plugin-dialog": "^2.2.1",
-    "@tauri-apps/plugin-fs": "^2.2.1",
-    "@tauri-apps/plugin-shell": "^2",
+    "@tauri-apps/api": "^2.9.0",
+    "@tauri-apps/plugin-dialog": "^2.4.2",
+    "@tauri-apps/plugin-fs": "^2.4.4",
+    "@tauri-apps/plugin-shell": "^2.3.3",
     "element-plus": "^2.9.0",
     "pinia": "^3.0.2",
     "v-viewer": "^3.0.11",
@@ -23,7 +23,7 @@
     "vue-router": "^4.5.1"
   },
   "devDependencies": {
-    "@tauri-apps/cli": "^2",
+    "@tauri-apps/cli": "^2.9.4",
     "@vitejs/plugin-vue": "^5.0.5",
     "typescript": "~5.4.5",
     "vite": "^5.3.1",
