@@ -1,16 +1,18 @@
 <script setup lang="ts">
-import { ref, onMounted,onUnmounted,computed } from 'vue';
-import { ElButton, ElTable, ElTableColumn, ElInput, ElMessage, ElIcon } from 'element-plus';
+// 依赖与组件导入
+import { ref, onMounted, onUnmounted, computed, nextTick } from 'vue';
+import { ElMessage } from 'element-plus';
 import { ArrowLeft, Folder, VideoCamera, Headset, Picture, Document } from '@element-plus/icons-vue';
 import { invoke, convertFileSrc } from '@tauri-apps/api/core';
 import { open } from '@tauri-apps/plugin-dialog';
 import { readTextFile, writeTextFile, BaseDirectory, mkdir, exists } from '@tauri-apps/plugin-fs';
 import VideoPreview from '../components/VideoPreview.vue';
 import ImagePreview from '../components/ImagePreview.vue';
-import { openLoading, closeLoading } from "../../src/utils/loadingUtil";
-import { getCurrentWindow,Window   } from '@tauri-apps/api/window';
-import { Webview } from "@tauri-apps/api/webview"
+import { openLoading, closeLoading } from '../../src/utils/loadingUtil';
+import { getCurrentWindow, Window } from '@tauri-apps/api/window';
+import { Webview } from '@tauri-apps/api/webview';
 
+// 文件项结构定义
 interface FileItem {
   is_dir: boolean;
   name: string;
@@ -19,57 +21,102 @@ interface FileItem {
   path: string;
 }
 
-// 视频文件扩展名
+// 媒体文件扩展名集合
 const videoExtensions = ['.mp4', '.webm', '.ogg', '.mov', '.avi'];
-// 音频文件扩展名
 const audioExtensions = ['.mp3', '.wav', '.aac', '.flac', '.m4a'];
-// 图片文件扩展名
 const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'];
 
+// 业务状态
 const currentPath = ref('');
 const fileList = ref<FileItem[]>([]);
 const imageFiles = ref<Map<string, number>>(new Map());
 const pathHistory = ref<string[]>([]);
 const configPath = ref('pathConfig.json');
 
-// 排序相关
+// 排序相关状态
 const sortColumn = ref('');
 const sortOrder = ref('');
 
-// 预览相关
+// 预览相关状态
 const showVideoPreview = ref(false);
 const currentVideoUrl = ref('');
 const showImagePreview = ref(false);
 const currentImageUrl = ref<string[]>([]);
 const currentIndex = ref(0);
 
-// 导航栏高度
+// 导航栏与工具栏高度（用于高度计算）
 const tabsHeight = ref(42.8);
 const toolbarHeight = ref(32);
 
-// 系统设置的缩放率
+// 窗口尺寸与滚动区域高度计算
 const scaleFactor = ref(1);
 const windowsHeight = ref(0);
-// 计算高度（使用 computed 让高度保持响应式）
-const scrollbarHeight = computed(() => `${(windowsHeight.value/scaleFactor.value)  - tabsHeight.value - toolbarHeight.value  - 20-0.1  }px`);
+const scrollbarHeight = computed(() => {
+  const height = (windowsHeight.value / scaleFactor.value) - tabsHeight.value - toolbarHeight.value - 20 - 0.1;
+  return `${Math.max(0, height)}px`;
+});
 
+// 滚动组件引用与滚动位置存储
 const scrollRef = ref<any | null>(null);
+const scrollPositions = ref<Map<string, number>>(new Map());
 
-
-
-// 计算滚动区域高度
-const calculateScrollbarHeight = async () => {
-  windowsHeight.value = (await getCurrentWindow().innerSize()).height;
-  scaleFactor.value = await getCurrentWindow().scaleFactor();
-
-  if (scrollRef.value?.$el) {
-      scrollRef.value.$el.style.height = scrollbarHeight.value;
-      console.log('scrollbarHeight:', scrollbarHeight.value);
-  }
-  
+// 获取当前滚动位置
+const getCurrentScrollTop = (): number => {
+  const inst = scrollRef.value as any;
+  const wrap = inst?.wrapRef || inst?.$el?.querySelector?.('.el-scrollbar__wrap');
+  return wrap ? wrap.scrollTop : 0;
 };
 
-// 监听窗口大小变化
+// 记住当前路径的滚动位置
+const rememberCurrentScroll = () => {
+  if (currentPath.value) {
+    scrollPositions.value.set(currentPath.value, getCurrentScrollTop());
+  }
+};
+
+// 恢复指定路径的滚动位置
+const restoreScrollForPath = (path: string) => {
+  const pos = scrollPositions.value.get(path) ?? 0;
+  const inst = scrollRef.value as any;
+  if (!inst) return;
+  if (typeof inst.setScrollTop === 'function') {
+    inst.setScrollTop(pos);
+    return;
+  }
+  const wrap = inst?.wrapRef || inst?.$el?.querySelector?.('.el-scrollbar__wrap');
+  if (wrap) wrap.scrollTop = pos;
+};
+
+// 滚动到顶部（用于前进导航）
+const scrollToTop = () => {
+  const inst = scrollRef.value as any;
+  if (!inst) return;
+  if (typeof inst.setScrollTop === 'function') {
+    inst.setScrollTop(0);
+    return;
+  }
+  const wrap = inst?.wrapRef || inst?.$el?.querySelector?.('.el-scrollbar__wrap');
+  if (wrap) wrap.scrollTop = 0;
+};
+
+// 滚动事件，持续记录当前位置
+const onScroll = (e: any) => {
+  const scrollTop = typeof e === 'object' && e ? (e.scrollTop ?? getCurrentScrollTop()) : getCurrentScrollTop();
+  if (currentPath.value) {
+    scrollPositions.value.set(currentPath.value, scrollTop);
+  }
+};
+
+
+
+// 计算滚动区域高度（读取窗口逻辑尺寸与缩放）
+const calculateScrollbarHeight = async () => {
+  const size = await getCurrentWindow().innerSize();
+  windowsHeight.value = size.height;
+  scaleFactor.value = await getCurrentWindow().scaleFactor();
+};
+
+// 监听窗口大小变化并更新高度
 const handleResize = () => {
   calculateScrollbarHeight();
 };
@@ -86,28 +133,25 @@ const getFileIcon = (row: any) => {
   return Document;
 };
 
-// 判断是否为视频文件
-const isVideoFile = (filename: string) => {
-  return videoExtensions.some(ext => filename.toLowerCase().endsWith(ext));
+// 判断各类型媒体文件
+const isVideoFile = (filename: string) => videoExtensions.some(ext => filename.toLowerCase().endsWith(ext));
+const isAudioFile = (filename: string) => audioExtensions.some(ext => filename.toLowerCase().endsWith(ext));
+const isImageFile = (filename: string) => imageExtensions.some(ext => filename.toLowerCase().endsWith(ext));
+
+// 将本地文件路径转换为可预览的资源 URL
+const getAssetUrl = async (path: string) => {
+  try {
+    return await convertFileSrc(path);
+  } catch (e) {
+    throw e;
+  }
 };
 
-// 判断是否为音频文件
-const isAudioFile = (filename: string) => {
-  return audioExtensions.some(ext => filename.toLowerCase().endsWith(ext));
-};
-
-// 判断是否为图片文件
-const isImageFile = (filename: string) => {
-  return imageExtensions.some(ext => filename.toLowerCase().endsWith(ext));
-};
-
-// 预览视频
+// 预览视频文件
 const previewVideo = async (path: string) => {
   try {
     openLoading();
-    // 使用 Tauri 的 convertFileSrc 函数将文件路径转换为可用于视频预览的  URL (tauri 的protocol协议实现的  要在配置文件开权限)
-    const assetUrl = await convertFileSrc(path);
-    console.log('assetUrl：', assetUrl);
+    const assetUrl = await getAssetUrl(path);
     currentVideoUrl.value = assetUrl;
     showVideoPreview.value = true;
     closeLoading();
@@ -117,16 +161,14 @@ const previewVideo = async (path: string) => {
   }
 };
 
-// 预览图片
+// 预览图片文件
 const previewImage = async (path: string) => {
   try {
     openLoading();
-    const assetUrl = await convertFileSrc(path);
-    console.log('assetUrl：', assetUrl);
-    currentImageUrl.value = await Promise.all(Array.from(imageFiles.value).map(async ([path]) => await convertFileSrc(path)));
-    // 计算当前点击图片在imageFiles中的索引
+    currentImageUrl.value = await Promise.all(
+      Array.from(imageFiles.value).map(async ([p]) => await getAssetUrl(p))
+    );
     currentIndex.value = imageFiles.value.get(path) || 0;
-    // 渲染图片预览
     showImagePreview.value = true;
     closeLoading();
   } catch (error) {
@@ -135,7 +177,7 @@ const previewImage = async (path: string) => {
   }
 };
 
-// 格式化文件大小
+// 文件大小格式化显示
 const formatFileSize = (size: number) => {
   if (size < 1024) return `${size} B`;
   if (size < 1024 * 1024) return `${(size / 1024).toFixed(2)} KB`;
@@ -143,21 +185,14 @@ const formatFileSize = (size: number) => {
   return `${(size / (1024 * 1024 * 1024)).toFixed(2)} GB`;
 };
 
-// 选择文件夹
+// 选择并打开文件夹
 const selectFolder = async () => {
   try {
-    const selected = await open({
-      directory: true,
-      multiple: false,
-    });
-    
+    const selected = await open({ directory: true, multiple: false });
     if (selected) {
-      currentPath.value = selected as string;
-      // 保存路径配置
-      await savePathConfig();
-      // 清空历史记录  
       pathHistory.value = [];
-      await openFolder(currentPath.value);
+      await openFolder(selected as string, false);
+      await savePathConfig();
     }
   } catch (error) {
     ElMessage.error('选择文件夹失败');
@@ -165,22 +200,40 @@ const selectFolder = async () => {
   }
 };
 
-// 打开文件夹
-const openFolder = async (path: string, addToHistory = true) => {
+// 从后端读取目录文件
+const readDirectory = async (path: string) => {
+  return await invoke<FileItem[]>('read_directory', { path });
+};
+
+// 更新图片文件映射（用于图片预览列表）
+const updateImageFilesMap = (files: FileItem[]) => {
+  imageFiles.value = new Map(
+    files
+      .filter(file => !file.is_dir && isImageFile(file.name))
+      .map((file, index) => [file.path, index])
+  );
+};
+
+// 打开指定文件夹并维护历史
+const openFolder = async (nextPath: string, pushHistory = true) => {
   try {
-    const files = await invoke<FileItem[]>('read_directory', { path });
-    fileList.value = files;
-    imageFiles.value = new Map(files
-  .filter(file => !file.is_dir && isImageFile(file.name))
-  .map((file, index) => [file.path, index]));
-    if (addToHistory && currentPath.value) {
+    if (pushHistory && currentPath.value && currentPath.value !== nextPath) {
+      rememberCurrentScroll();
       pathHistory.value.push(currentPath.value);
     }
-    currentPath.value = path;
-    
-    // 应用之前的排序（如果有）
+
+    const files = await readDirectory(nextPath);
+    fileList.value = files;
+    updateImageFilesMap(files);
+    currentPath.value = nextPath;
+
     if (sortColumn.value && sortOrder.value) {
       applySorting(sortColumn.value, sortOrder.value);
+    }
+
+    await nextTick();
+    if (pushHistory) {
+      scrollToTop();
     }
   } catch (error) {
     ElMessage.error('读取文件夹失败');
@@ -188,47 +241,44 @@ const openFolder = async (path: string, addToHistory = true) => {
   }
 };
 
-// 返回上一级目录
+// 返回上一级目录（基于栈的历史）
 const goBack = async () => {
-  if (canGoBack()) {
-    const previousPath = pathHistory.value[pathHistory.value.length - 2];
-    if (previousPath) {
-      // 移除当前路径之后的所有历史记录
-      pathHistory.value = pathHistory.value.slice(0, -1);
-      await openFolder(previousPath, false);
-    }
+  if (!canGoBack()) return;
+  rememberCurrentScroll();
+  const previous = pathHistory.value.pop();
+  if (previous) {
+    await openFolder(previous, false);
+    await nextTick();
+    restoreScrollForPath(previous);
   }
 };
 
-// 处理行双击事件
-const handleRowClick = (row: any) => {
+// 行双击事件：打开文件夹或预览媒体
+const handleRowClick = (row: FileItem) => {
   if (row.is_dir) {
-    currentPath.value = row.path;
     openFolder(row.path, true);
-  } else if (isVideoFile(row.name)) {
+    return;
+  }
+  if (isVideoFile(row.name) || isAudioFile(row.name)) {
     previewVideo(row.path);
-  } else if (isAudioFile(row.name)) {
-    previewVideo(row.path);
-  } else if (isImageFile(row.name)) {
+    return;
+  }
+  if (isImageFile(row.name)) {
     previewImage(row.path);
   }
 };
 
-// 处理拖拽开始事件
+// 开始拖拽：设置拖拽数据（JSON）与拖拽效果
 const handleDragStart = (row: FileItem, event: DragEvent) => {
-  // 设置拖拽数据
   if (event.dataTransfer) {
-    // 将文件信息转换为JSON字符串
     event.dataTransfer.setData('application/json', JSON.stringify(row));
-    // 设置拖拽效果
     event.dataTransfer.effectAllowed = 'copy';
   }
 };
 
-// 打开文件分类窗口
+// 打开文件分类窗口并绑定拖拽事件
 const openClassifierWindow = async () => {
   try {
-    // 检查窗口是否已存在
     const appWindow = new Window('file-classifier');
     const webview = new Webview(appWindow, 'file-classifier-webview', {
       url: '/#/file-classifier',
@@ -237,40 +287,22 @@ const openClassifierWindow = async () => {
       x: 100,
       y: 100,
       dragDropEnabled: true,
-      acceptFirstMouse: true
+      acceptFirstMouse: true,
     });
 
     webview.onDragDropEvent((event) => {
-      // 处理拖拽事件
-      console.log('拖拽事件:', event);
-      
-      // 获取拖拽的文件数据
       if (event.payload.type === 'drop' || event.payload.type === 'enter') {
         const paths = event.payload.paths;
         if (paths && paths.length > 0) {
           const path = paths[0];
           const name = path.split(/\\|\//).pop() || path;
-          const fileData = {
-            is_dir: false,
-            name,
-            size: 0,
-            modified_time: '',
-            path
-          };
-          
-          // 将文件数据传递给FileClassifier组件
+          const fileData = { is_dir: false, name, size: 0, modified_time: '', path };
           webview.emit('file-dropped', fileData);
         }
       }
     });
 
-    
-    // 监听窗口创建完成事件
-    webview.once('tauri://created', () => {
-      console.log('文件分类窗口已创建');
-    });
-    
-    // 监听窗口错误事件
+    webview.once('tauri://created', () => {});
     webview.once('tauri://error', (e) => {
       console.error('文件分类窗口创建失败:', e);
       ElMessage.error('打开文件分类窗口失败');
@@ -281,104 +313,78 @@ const openClassifierWindow = async () => {
   }
 };
 
-// 处理排序变化
+// 处理排序变化并应用排序
 const handleSortChange = ({ prop, order }: any) => {
   sortColumn.value = prop;
   sortOrder.value = order;
-  
-  if (!order) {
-    // 如果取消排序，不做任何操作
-    return;
-  }
-  
+  if (!order) return;
   applySorting(prop, order);
 };
 
-// 应用排序
-// 保存路径配置
+// 保存路径配置到 AppConfig 目录
 const savePathConfig = async () => {
   try {
-    // 确保目录存在
     const dirExists = await exists('', { baseDir: BaseDirectory.AppConfig });
     if (!dirExists) {
-      await mkdir('', {
-        recursive: true,
-        baseDir: BaseDirectory.AppConfig
-      });
+      await mkdir('', { recursive: true, baseDir: BaseDirectory.AppConfig });
     }
-    // 写入配置文件
-    await writeTextFile(configPath.value, JSON.stringify({ currentPath: currentPath.value }), {
-      baseDir: BaseDirectory.AppConfig,
-      create: true
-    });
+    await writeTextFile(
+      configPath.value,
+      JSON.stringify({ currentPath: currentPath.value }),
+      { baseDir: BaseDirectory.AppConfig, create: true }
+    );
   } catch (error) {
     console.error('保存路径配置失败:', error);
   }
 };
 
-// 加载路径配置
-onMounted(async () => {
+// 载入路径配置并返回已保存路径
+const loadPathConfig = async (): Promise<string | null> => {
   try {
-    const config = await readTextFile(configPath.value, {
-      baseDir: BaseDirectory.AppConfig
-    });
-    
+    const config = await readTextFile(configPath.value, { baseDir: BaseDirectory.AppConfig });
     const { currentPath: savedPath } = JSON.parse(config);
-    if (savedPath) {
-      currentPath.value = savedPath;
-      await openFolder(currentPath.value);
-    }
-    
-    // 初始计算高度
-    calculateScrollbarHeight();
-    // 添加窗口大小变化监听
-    window.addEventListener('resize', handleResize);
-  } catch (error) {
-    console.log('首次运行或配置文件不存在，使用默认值');
+    return savedPath || null;
+  } catch {
+    return null;
   }
+};
+
+// 组件挂载：加载配置与尺寸计算
+onMounted(async () => {
+  const saved = await loadPathConfig();
+  if (saved) {
+    await openFolder(saved, false);
+  }
+  await calculateScrollbarHeight();
+  window.addEventListener('resize', handleResize);
 });
 
+// 组件卸载：移除事件监听
 onUnmounted(() => {
-  // 移除监听
   window.removeEventListener('resize', handleResize);
 });
 
+// 应用排序：文件夹优先，其次按列与排序方向
 const applySorting = (prop: string, order: string) => {
   const sortedList = [...fileList.value];
-  
-  // 首先按文件夹/文件类型排序（文件夹始终在前）
   sortedList.sort((a, b) => {
-    // 如果正在按类型排序，则遵循排序方向
     if (prop === 'is_dir') {
-      return order === 'ascending' 
-        ? Number(a.is_dir) - Number(b.is_dir)
-        : Number(b.is_dir) - Number(a.is_dir);
+      return order === 'ascending' ? Number(a.is_dir) - Number(b.is_dir) : Number(b.is_dir) - Number(a.is_dir);
     }
-    
-    // 否则，文件夹始终在前（除非正在按其他属性排序）
-    if (a.is_dir !== b.is_dir) {
-      return a.is_dir ? -1 : 1;
-    }
-    
-    // 然后按指定属性排序
+    if (a.is_dir !== b.is_dir) return a.is_dir ? -1 : 1;
     if (prop === 'name') {
-      return order === 'ascending'
-        ? a.name.localeCompare(b.name)
-        : b.name.localeCompare(a.name);
-    } else if (prop === 'size') {
-      // 文件夹大小显示为 '-'，所以我们给它们一个默认值 -1
+      return order === 'ascending' ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name);
+    }
+    if (prop === 'size') {
       const sizeA = a.is_dir ? -1 : a.size;
       const sizeB = b.is_dir ? -1 : b.size;
       return order === 'ascending' ? sizeA - sizeB : sizeB - sizeA;
-    } else if (prop === 'modified_time') {
-      return order === 'ascending'
-        ? a.modified_time.localeCompare(b.modified_time)
-        : b.modified_time.localeCompare(a.modified_time);
     }
-    
+    if (prop === 'modified_time') {
+      return order === 'ascending' ? a.modified_time.localeCompare(b.modified_time) : b.modified_time.localeCompare(a.modified_time);
+    }
     return 0;
   });
-  
   fileList.value = sortedList;
 };
 
@@ -414,7 +420,7 @@ const applySorting = (prop: string, order: string) => {
       </el-button>
     </div>
     
-    <el-scrollbar  :native="true"  ref="scrollRef">
+    <el-scrollbar :native="true" :style="{ height: scrollbarHeight }" ref="scrollRef" @scroll="onScroll">
     <el-table 
       :data="fileList" 
       style="width: 100%" 
@@ -518,10 +524,7 @@ const applySorting = (prop: string, order: string) => {
 }
 
 
-.el-scrollbar {
-  /* height: 100%; */
-  /* height: v-bind(scrollbarHeight);/ */
-}
+
 
 .el-table {
   flex: 1;
