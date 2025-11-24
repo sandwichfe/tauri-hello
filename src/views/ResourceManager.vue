@@ -60,11 +60,14 @@ const scrollbarHeight = computed(() => {
 const scrollRef = ref<any | null>(null);
 const scrollPositions = ref<Map<string, number>>(new Map());
 
+// 获取表格滚动元素
+const getScrollableEl = () => {
+  return scrollRef.value;
+}
+
 // 获取当前滚动位置
 const getCurrentScrollTop = (): number => {
-  const inst = scrollRef.value as any;
-  const wrap = inst?.wrapRef || inst?.$el?.querySelector?.('.el-scrollbar__wrap');
-  return wrap ? wrap.scrollTop : 0;
+  return getScrollableEl()?.scrollTop ?? 0;
 };
 
 // 记住当前路径的滚动位置
@@ -77,37 +80,24 @@ const rememberCurrentScroll = () => {
 // 恢复指定路径的滚动位置
 const restoreScrollForPath = (path: string) => {
   const pos = scrollPositions.value.get(path) ?? 0;
-  const inst = scrollRef.value as any;
-  if (!inst) return;
-  if (typeof inst.setScrollTop === 'function') {
-    inst.setScrollTop(pos);
-    return;
-  }
-  const wrap = inst?.wrapRef || inst?.$el?.querySelector?.('.el-scrollbar__wrap');
-  if (wrap) {
-    wrap.scrollTop = pos;
-  }
+  // 使用 nextTick 确保在 DOM 更新后执行滚动恢复
+  nextTick(() => {
+    const el = getScrollableEl();
+    if (el) {
+      el.scrollTop = pos;
+    }
+  });
 };
 
 // 滚动到顶部（用于前进导航）
 const scrollToTop = () => {
-  const inst = scrollRef.value as any;
-  if (!inst) return;
-  if (typeof inst.setScrollTop === 'function') {
-    inst.setScrollTop(0);
-    return;
+  const el = getScrollableEl();
+  if (el) {
+    el.scrollTop = 0;
   }
-  const wrap = inst?.wrapRef || inst?.$el?.querySelector?.('.el-scrollbar__wrap');
-  if (wrap) wrap.scrollTop = 0;
 };
 
-// 滚动事件，持续记录当前位置
-const onScroll = (e: any) => {
-  const scrollTop = typeof e === 'object' && e ? (e.scrollTop ?? getCurrentScrollTop()) : getCurrentScrollTop();
-  if (currentPath.value) {
-    scrollPositions.value.set(currentPath.value, scrollTop);
-  }
-};
+
 
 
 // 计算滚动区域高度（读取窗口逻辑尺寸与缩放）
@@ -316,11 +306,14 @@ const openClassifierWindow = async () => {
 };
 
 // 处理排序变化并应用排序
-const handleSortChange = ({prop, order}: any) => {
-  sortColumn.value = prop;
-  sortOrder.value = order;
-  if (!order) return;
-  applySorting(prop, order);
+const handleSortChange = ({prop}: any) => {
+  if (sortColumn.value === prop) {
+    sortOrder.value = sortOrder.value === 'ascending' ? 'descending' : 'ascending';
+  } else {
+    sortColumn.value = prop;
+    sortOrder.value = 'ascending';
+  }
+  applySorting(sortColumn.value, sortOrder.value);
 };
 
 // 保存路径配置到 AppConfig 目录
@@ -410,31 +403,39 @@ const applySorting = (prop: string, order: string) => {
       </el-button>
     </div>
 
-    <el-scrollbar :native="true" :style="{ height: scrollbarHeight }" ref="scrollRef" @scroll="onScroll">
-      <el-table :data="fileList" style="width: 100%" @row-dblclick="handleRowClick" @sort-change="handleSortChange"
-                row-key="path">
-        <el-table-column label="类型" width="80" prop="is_dir" sortable="custom">
-          <template #default="{ row }">
+    <div class="custom-table-container" :style="{ height: scrollbarHeight }" ref="scrollRef">
+      <div class="custom-table-header">
+        <div class="header-cell type-cell sortable" @click="handleSortChange({ prop: 'is_dir' })">
+          <span :class="['sort-caret', sortOrder]" :style="{ visibility: sortColumn === 'is_dir' ? 'visible' : 'hidden' }"></span>
+          类型
+        </div>
+        <div class="header-cell name-cell sortable" @click="handleSortChange({ prop: 'name' })">
+          <span :class="['sort-caret', sortOrder]" :style="{ visibility: sortColumn === 'name' ? 'visible' : 'hidden' }"></span>
+          名称
+        </div>
+        <div class="header-cell size-cell sortable" @click="handleSortChange({ prop: 'size' })">
+          <span :class="['sort-caret', sortOrder]" :style="{ visibility: sortColumn === 'size' ? 'visible' : 'hidden' }"></span>
+          大小
+        </div>
+        <div class="header-cell modified-cell sortable" @click="handleSortChange({ prop: 'modified_time' })">
+          <span :class="['sort-caret', sortOrder]" :style="{ visibility: sortColumn === 'modified_time' ? 'visible' : 'hidden' }"></span>
+          修改时间
+        </div>
+      </div>
+      <div class="custom-table-body">
+        <div v-for="row in fileList" :key="row.path" class="custom-table-row" @dblclick="handleRowClick(row)" draggable="true" @dragstart="handleDragStart(row, $event)">
+          <div class="body-cell type-cell">
             <el-icon>
               <component :is="getFileIcon(row)"/>
             </el-icon>
-          </template>
-        </el-table-column>
-        <el-table-column prop="name" label="名称" sortable="custom">
-          <template #default="{ row }">
-            <div class="draggable-cell" draggable="true" @dragstart="handleDragStart(row, $event)">
-              {{ row.name }}
-            </div>
-          </template>
-        </el-table-column>
-        <el-table-column label="大小" width="120" prop="size" sortable="custom">
-          <template #default="{ row }">
-            <span>{{ row.is_dir ? '-' : formatFileSize(row.size) }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="modified_time" label="修改时间" width="180" sortable="custom"/>
-      </el-table>
-    </el-scrollbar>
+          </div>
+          <div class="body-cell name-cell">{{ row.name }}</div>
+          <div class="body-cell size-cell">{{ row.is_dir ? '-' : formatFileSize(row.size) }}</div>
+          <div class="body-cell modified-cell">{{ row.modified_time }}</div>
+        </div>
+      </div>
+    </div>
+
     <div class="file-count">
       共 {{ fileList.length }} 个文件
     </div>
@@ -445,6 +446,87 @@ const applySorting = (prop: string, order: string) => {
 </template>
 
 <style scoped>
+.custom-table-container {
+  overflow-y: auto;
+  border: 1px solid #ebeef5;
+  border-radius: 4px;
+  margin-top: 10px;
+}
+
+.custom-table-header, .custom-table-row {
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid #ebeef5;
+}
+
+.custom-table-header {
+  position: sticky;
+  top: 0;
+  background-color: #fff;
+  z-index: 1;
+}
+
+.header-cell, .body-cell {
+  padding: 8px 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 13px;
+  text-align: left;
+}
+
+.body-cell {
+  color: #606266;
+}
+
+.header-cell {
+  font-weight: bold;
+  color: #606266;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start; /* Align to the left */
+  justify-content: center;
+}
+
+.type-cell {
+  width: 80px;
+}
+
+.name-cell {
+  flex: 1;
+}
+
+.size-cell {
+  width: 120px;
+}
+
+.modified-cell {
+  width: 180px;
+}
+
+.sortable {
+  cursor: pointer;
+}
+
+.sort-caret {
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  margin-bottom: 4px;
+}
+
+/*排序箭头效果*/
+.sort-caret.ascending {
+  border-bottom-color: #606266;
+}
+
+.sort-caret.descending {
+  border-top-color: #606266;
+}
+
 .resource-manager .el-icon {
   color: #a08dba;
   font-size: 22px;
@@ -460,7 +542,6 @@ const applySorting = (prop: string, order: string) => {
   display: flex;
   gap: 10px;
   align-items: center;
-  /* 避免工具栏被压缩 */
   flex-shrink: 0;
 }
 
@@ -480,33 +561,17 @@ const applySorting = (prop: string, order: string) => {
   border: 1px solid #dcdfe6;
 }
 
-
-.el-table {
-  flex: 1;
-  overflow-y: auto;
-  margin-top: 10px;
-}
-
 .file-count {
   line-height: 20px;
   padding-right: 5px;
   font-size: 13px;
   border-top: 0.1px solid #ebeef5;
   text-align: right;
-  color: #909399;
+  color: #606266;
 }
 
 .classifier-button {
   margin-left: 10px;
 }
 
-.draggable-cell {
-  padding: 5px 0;
-  width: 100%;
-}
-
-.draggable-cell:hover {
-  background-color: #f5f7fa;
-  border-radius: 4px;
-}
 </style>
