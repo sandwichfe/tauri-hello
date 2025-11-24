@@ -1,16 +1,16 @@
 <script setup lang="ts">
 // 依赖与组件导入
-import { ref, onMounted, onUnmounted, computed, nextTick } from 'vue';
-import { ElMessage } from 'element-plus';
-import { ArrowLeft, Folder, VideoCamera, Headset, Picture, Document } from '@element-plus/icons-vue';
-import { invoke, convertFileSrc } from '@tauri-apps/api/core';
-import { open } from '@tauri-apps/plugin-dialog';
-import { readTextFile, writeTextFile, BaseDirectory, mkdir, exists } from '@tauri-apps/plugin-fs';
+import {computed, nextTick, onMounted, onUnmounted, ref} from 'vue';
+import {ElMessage} from 'element-plus';
+import {ArrowLeft, Document, Folder, Headset, Picture, VideoCamera} from '@element-plus/icons-vue';
+import {convertFileSrc, invoke} from '@tauri-apps/api/core';
+import {open} from '@tauri-apps/plugin-dialog';
+import {BaseDirectory, exists, mkdir, readTextFile, writeTextFile} from '@tauri-apps/plugin-fs';
 import VideoPreview from '../components/VideoPreview.vue';
 import ImagePreview from '../components/ImagePreview.vue';
-import { openLoading, closeLoading } from '../../src/utils/loadingUtil';
-import { getCurrentWindow, Window } from '@tauri-apps/api/window';
-import { Webview } from '@tauri-apps/api/webview';
+import {closeLoading, openLoading} from '../utils/loadingUtil';
+import {getCurrentWindow, Window} from '@tauri-apps/api/window';
+import {Webview} from '@tauri-apps/api/webview';
 
 // 文件项结构定义
 interface FileItem {
@@ -84,7 +84,9 @@ const restoreScrollForPath = (path: string) => {
     return;
   }
   const wrap = inst?.wrapRef || inst?.$el?.querySelector?.('.el-scrollbar__wrap');
-  if (wrap) wrap.scrollTop = pos;
+  if (wrap) {
+    wrap.scrollTop = pos;
+  }
 };
 
 // 滚动到顶部（用于前进导航）
@@ -106,7 +108,6 @@ const onScroll = (e: any) => {
     scrollPositions.value.set(currentPath.value, scrollTop);
   }
 };
-
 
 
 // 计算滚动区域高度（读取窗口逻辑尺寸与缩放）
@@ -141,7 +142,7 @@ const isImageFile = (filename: string) => imageExtensions.some(ext => filename.t
 // 将本地文件路径转换为可预览的资源 URL
 const getAssetUrl = async (path: string) => {
   try {
-    return await convertFileSrc(path);
+    return convertFileSrc(path);
   } catch (e) {
     throw e;
   }
@@ -151,8 +152,7 @@ const getAssetUrl = async (path: string) => {
 const previewVideo = async (path: string) => {
   try {
     openLoading();
-    const assetUrl = await getAssetUrl(path);
-    currentVideoUrl.value = assetUrl;
+    currentVideoUrl.value = await getAssetUrl(path);
     showVideoPreview.value = true;
     closeLoading();
   } catch (error) {
@@ -166,7 +166,7 @@ const previewImage = async (path: string) => {
   try {
     openLoading();
     currentImageUrl.value = await Promise.all(
-      Array.from(imageFiles.value).map(async ([p]) => await getAssetUrl(p))
+        Array.from(imageFiles.value).map(async ([p]) => await getAssetUrl(p))
     );
     currentIndex.value = imageFiles.value.get(path) || 0;
     showImagePreview.value = true;
@@ -188,7 +188,7 @@ const formatFileSize = (size: number) => {
 // 选择并打开文件夹
 const selectFolder = async () => {
   try {
-    const selected = await open({ directory: true, multiple: false });
+    const selected = await open({directory: true, multiple: false});
     if (selected) {
       pathHistory.value = [];
       await openFolder(selected as string, false);
@@ -202,13 +202,13 @@ const selectFolder = async () => {
 
 // 从后端读取目录文件
 const readDirectory = async (path: string) => {
-  return await invoke<FileItem[]>('read_directory', { path });
+  return await invoke<FileItem[]>('read_directory', {path});
 };
 
 // 更新图片文件映射（用于图片预览列表）
 const updateImageFilesMap = (files: FileItem[]) => {
   imageFiles.value = new Map(
-    files
+      files
       .filter(file => !file.is_dir && isImageFile(file.name))
       .map((file, index) => [file.path, index])
   );
@@ -231,6 +231,7 @@ const openFolder = async (nextPath: string, pushHistory = true) => {
       applySorting(sortColumn.value, sortOrder.value);
     }
 
+    // 等待dom更新后 再滚动到顶部
     await nextTick();
     if (pushHistory) {
       scrollToTop();
@@ -295,14 +296,15 @@ const openClassifierWindow = async () => {
         const paths = event.payload.paths;
         if (paths && paths.length > 0) {
           const path = paths[0];
-          const name = path.split(/\\|\//).pop() || path;
-          const fileData = { is_dir: false, name, size: 0, modified_time: '', path };
+          const name = path.split(/[\\/]/).pop() || path;
+          const fileData = {is_dir: false, name, size: 0, modified_time: '', path};
           webview.emit('file-dropped', fileData);
         }
       }
     });
 
-    webview.once('tauri://created', () => {});
+    webview.once('tauri://created', () => {
+    });
     webview.once('tauri://error', (e) => {
       console.error('文件分类窗口创建失败:', e);
       ElMessage.error('打开文件分类窗口失败');
@@ -314,7 +316,7 @@ const openClassifierWindow = async () => {
 };
 
 // 处理排序变化并应用排序
-const handleSortChange = ({ prop, order }: any) => {
+const handleSortChange = ({prop, order}: any) => {
   sortColumn.value = prop;
   sortOrder.value = order;
   if (!order) return;
@@ -324,14 +326,14 @@ const handleSortChange = ({ prop, order }: any) => {
 // 保存路径配置到 AppConfig 目录
 const savePathConfig = async () => {
   try {
-    const dirExists = await exists('', { baseDir: BaseDirectory.AppConfig });
+    const dirExists = await exists('', {baseDir: BaseDirectory.AppConfig});
     if (!dirExists) {
-      await mkdir('', { recursive: true, baseDir: BaseDirectory.AppConfig });
+      await mkdir('', {recursive: true, baseDir: BaseDirectory.AppConfig});
     }
     await writeTextFile(
-      configPath.value,
-      JSON.stringify({ currentPath: currentPath.value }),
-      { baseDir: BaseDirectory.AppConfig, create: true }
+        configPath.value,
+        JSON.stringify({currentPath: currentPath.value}),
+        {baseDir: BaseDirectory.AppConfig, create: true}
     );
   } catch (error) {
     console.error('保存路径配置失败:', error);
@@ -341,8 +343,8 @@ const savePathConfig = async () => {
 // 载入路径配置并返回已保存路径
 const loadPathConfig = async (): Promise<string | null> => {
   try {
-    const config = await readTextFile(configPath.value, { baseDir: BaseDirectory.AppConfig });
-    const { currentPath: savedPath } = JSON.parse(config);
+    const config = await readTextFile(configPath.value, {baseDir: BaseDirectory.AppConfig});
+    const {currentPath: savedPath} = JSON.parse(config);
     return savedPath || null;
   } catch {
     return null;
@@ -393,97 +395,52 @@ const applySorting = (prop: string, order: string) => {
 <template>
   <div class="resource-manager">
     <div class="toolbar">
-      <el-button
-        @click="goBack"
-        :disabled="!canGoBack()"
-        type="info"
-        class="back-button"
-      >
-        <el-icon><arrow-left /></el-icon>
+      <el-button @click="goBack" :disabled="!canGoBack()" type="info" class="back-button">
+        <el-icon>
+          <arrow-left/>
+        </el-icon>
       </el-button>
-      <el-input
-        v-model="currentPath"
-        placeholder="当前路径"
-        readonly
-        class="path-input"
-      >
+      <el-input v-model="currentPath" placeholder="当前路径" readonly class="path-input">
         <template #append>
           <el-button @click="selectFolder">选择文件夹</el-button>
         </template>
       </el-input>
-      <el-button 
-        type="primary" 
-        @click="openClassifierWindow"
-        class="classifier-button"
-      >
+      <el-button type="primary" @click="openClassifierWindow" class="classifier-button">
         打开分类窗口
       </el-button>
     </div>
-    
+
     <el-scrollbar :native="true" :style="{ height: scrollbarHeight }" ref="scrollRef" @scroll="onScroll">
-    <el-table 
-      :data="fileList" 
-      style="width: 100%" 
-      @row-dblclick="handleRowClick"
-      @sort-change="handleSortChange"
-      row-key="path"
-    >
-      <el-table-column 
-        label="类型" 
-        width="80"
-        prop="is_dir"
-        sortable="custom"
-      >
-        <template #default="{ row }">
-          <el-icon><component :is="getFileIcon(row)" /></el-icon>
-        </template>
-      </el-table-column>
-      <el-table-column 
-        prop="name" 
-        label="名称"
-        sortable="custom" 
-      >
-        <template #default="{ row }">
-          <div 
-            class="draggable-cell"
-            draggable="true"
-            @dragstart="handleDragStart(row, $event)"
-          >
-            {{ row.name }}
-          </div>
-        </template>
-      </el-table-column>
-      <el-table-column 
-        label="大小" 
-        width="120"
-        prop="size"
-        sortable="custom"
-      >
-        <template #default="{ row }">
-          <span>{{ row.is_dir ? '-' : formatFileSize(row.size) }}</span>
-        </template>
-      </el-table-column>
-      <el-table-column 
-        prop="modified_time" 
-        label="修改时间" 
-        width="180"
-        sortable="custom" 
-      />
-    </el-table>
-  </el-scrollbar>
-  <div class="file-count">
+      <el-table :data="fileList" style="width: 100%" @row-dblclick="handleRowClick" @sort-change="handleSortChange"
+                row-key="path">
+        <el-table-column label="类型" width="80" prop="is_dir" sortable="custom">
+          <template #default="{ row }">
+            <el-icon>
+              <component :is="getFileIcon(row)"/>
+            </el-icon>
+          </template>
+        </el-table-column>
+        <el-table-column prop="name" label="名称" sortable="custom">
+          <template #default="{ row }">
+            <div class="draggable-cell" draggable="true" @dragstart="handleDragStart(row, $event)">
+              {{ row.name }}
+            </div>
+          </template>
+        </el-table-column>
+        <el-table-column label="大小" width="120" prop="size" sortable="custom">
+          <template #default="{ row }">
+            <span>{{ row.is_dir ? '-' : formatFileSize(row.size) }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column prop="modified_time" label="修改时间" width="180" sortable="custom"/>
+      </el-table>
+    </el-scrollbar>
+    <div class="file-count">
       共 {{ fileList.length }} 个文件
     </div>
 
-    <VideoPreview
-      v-model:visible="showVideoPreview"
-      :video-url="currentVideoUrl"
-    />
-    <ImagePreview
-      v-model:visible="showImagePreview"
-      :image-urls="currentImageUrl"
-      :initial-index="currentIndex"
-    />
+    <VideoPreview v-model:visible="showVideoPreview" :video-url="currentVideoUrl"/>
+    <ImagePreview v-model:visible="showImagePreview" :image-urls="currentImageUrl" :initial-index="currentIndex"/>
   </div>
 </template>
 
@@ -503,8 +460,8 @@ const applySorting = (prop: string, order: string) => {
   display: flex;
   gap: 10px;
   align-items: center;
-   /* 避免工具栏被压缩 */
-  flex-shrink: 0;   
+  /* 避免工具栏被压缩 */
+  flex-shrink: 0;
 }
 
 .path-input {
@@ -522,8 +479,6 @@ const applySorting = (prop: string, order: string) => {
   background-color: #f5f7fa;
   border: 1px solid #dcdfe6;
 }
-
-
 
 
 .el-table {
@@ -546,7 +501,6 @@ const applySorting = (prop: string, order: string) => {
 }
 
 .draggable-cell {
-  cursor: move;
   padding: 5px 0;
   width: 100%;
 }
@@ -555,5 +509,4 @@ const applySorting = (prop: string, order: string) => {
   background-color: #f5f7fa;
   border-radius: 4px;
 }
-
 </style>
