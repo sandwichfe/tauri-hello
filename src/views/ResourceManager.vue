@@ -169,18 +169,21 @@ const previewImage = async (path: string) => {
 
 // 文件大小格式化显示
 const formatFileSize = (size: number) => {
-  if (size < 1024) return `${size} B`;
-  if (size < 1024 * 1024) return `${(size / 1024).toFixed(2)} KB`;
-  if (size < 1024 * 1024 * 1024) return `${(size / (1024 * 1024)).toFixed(2)} MB`;
-  return `${(size / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const exponent = Math.min(Math.floor(Math.log(size) / Math.log(1024)), units.length - 1);
+  const formattedSize = (size / Math.pow(1024, exponent)).toFixed(2);
+  return `${formattedSize} ${units[exponent]}`;
 };
+
+
 
 // 选择并打开文件夹
 const selectFolder = async () => {
   try {
     const selected = await open({directory: true, multiple: false});
     if (selected) {
-      pathHistory.value = [];
+      // 选择新文件夹前，先清除之前的操作数据
+      clearOperateData();
       await openFolder(selected as string, false);
       await savePathConfig();
     }
@@ -188,6 +191,12 @@ const selectFolder = async () => {
     ElMessage.error('选择文件夹失败');
     console.error(error);
   }
+};
+
+// 清除操作数据（包括路径历史和滚动位置）
+const clearOperateData = () => {
+  pathHistory.value = [];
+  scrollPositions.value.clear();
 };
 
 // 从后端读取目录文件
@@ -223,6 +232,12 @@ const openFolder = async (nextPath: string, pushHistory = true) => {
 
     // 等待dom更新后 再滚动到顶部
     await nextTick();
+
+    // 如果没有记录滚动位置，说明是第一次打开文件夹，滚动到顶部
+    if (scrollPositions.value.size == 0) {
+      scrollToTop();
+    }
+    // 新打开文件夹 滚动到顶部
     if (pushHistory) {
       scrollToTop();
     }
@@ -458,8 +473,8 @@ const applySorting = (prop: string, order: string) => {
   align-items: center;
 }
 
-.custom-table-row {
-  border-bottom: 1px solid #ebeef5;
+.custom-table-row:hover {
+  background-color: #f5f7fa;
 }
 
 .custom-table-row:last-child {
@@ -490,14 +505,12 @@ const applySorting = (prop: string, order: string) => {
 .header-cell {
   font-weight: normal;
   color: #606266;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
+  position: relative;
+  padding-top: 20px; /* 为箭头增加顶部空间 */
 }
 
 .type-cell {
-  width: 80px;
+  width: 60px;
 }
 
 .name-cell {
@@ -505,11 +518,11 @@ const applySorting = (prop: string, order: string) => {
 }
 
 .size-cell {
-  width: 120px;
+  width: 100px;
 }
 
 .modified-cell {
-  width: 180px;
+  width: 160px;
 }
 
 .sortable {
@@ -517,20 +530,20 @@ const applySorting = (prop: string, order: string) => {
 }
 
 .sort-caret {
-  display: block;
+  position: absolute;
+  top: 5px;
+  left: 50%;
+  transform: translateX(-50%);
   width: 0;
   height: 0;
-  margin-bottom: 5px;
-  border: 4px solid transparent;
-  margin-left: 0;
-}
-
-.sort-caret.ascending {
-  border-bottom-color: #606266;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-bottom: 4px solid #606266;
+  transition: transform 0.3s;
 }
 
 .sort-caret.descending {
-  border-top-color: #606266;
+  transform: translateX(-50%) rotate(180deg);
 }
 
 .resource-manager .el-icon {
@@ -575,6 +588,7 @@ const applySorting = (prop: string, order: string) => {
   border-top: 0.1px solid #ebeef5;
   text-align: right;
   color: #909399;
+  background-color: #fcfcfc;
 }
 
 .classifier-button {
