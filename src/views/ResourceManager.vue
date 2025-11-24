@@ -406,20 +406,20 @@ const applySorting = (prop: string, order: string) => {
     <div class="custom-table-container" :style="{ height: scrollbarHeight }" ref="scrollRef">
       <div class="custom-table-header">
         <div class="header-cell type-cell sortable" @click="handleSortChange({ prop: 'is_dir' })">
-          类型
           <span :class="['sort-caret', sortOrder]" :style="{ visibility: sortColumn === 'is_dir' ? 'visible' : 'hidden' }"></span>
+          类型
         </div>
         <div class="header-cell name-cell sortable" @click="handleSortChange({ prop: 'name' })">
-          名称
           <span :class="['sort-caret', sortOrder]" :style="{ visibility: sortColumn === 'name' ? 'visible' : 'hidden' }"></span>
+          名称
         </div>
         <div class="header-cell size-cell sortable" @click="handleSortChange({ prop: 'size' })">
-          大小
           <span :class="['sort-caret', sortOrder]" :style="{ visibility: sortColumn === 'size' ? 'visible' : 'hidden' }"></span>
+          大小
         </div>
         <div class="header-cell modified-cell sortable" @click="handleSortChange({ prop: 'modified_time' })">
-          修改时间
           <span :class="['sort-caret', sortOrder]" :style="{ visibility: sortColumn === 'modified_time' ? 'visible' : 'hidden' }"></span>
+          修改时间
         </div>
       </div>
       <div class="custom-table-body">
@@ -458,11 +458,20 @@ const applySorting = (prop: string, order: string) => {
   align-items: center;
 }
 
+.custom-table-row {
+  border-bottom: 1px solid #ebeef5;
+}
+
+.custom-table-row:last-child {
+  border-bottom: none;
+}
+
 .custom-table-header {
   position: sticky;
   top: 0;
   background-color: #fff;
   z-index: 1;
+  border-bottom: 1px solid #ebeef5;
 }
 
 .header-cell, .body-cell {
@@ -481,6 +490,10 @@ const applySorting = (prop: string, order: string) => {
 .header-cell {
   font-weight: normal;
   color: #606266;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
 }
 
 .type-cell {
@@ -504,12 +517,12 @@ const applySorting = (prop: string, order: string) => {
 }
 
 .sort-caret {
-  display: inline-block;
+  display: block;
   width: 0;
   height: 0;
-  margin-left: 5px;
-  vertical-align: middle;
+  margin-bottom: 5px;
   border: 4px solid transparent;
+  margin-left: 0;
 }
 
 .sort-caret.ascending {
