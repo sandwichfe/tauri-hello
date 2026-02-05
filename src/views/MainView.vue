@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { ElTabs, ElTabPane } from 'element-plus';
-import type { TabsInstance } from 'element-plus'
+import type { TabsInstance } from 'element-plus';
 import ResourceManager from './ResourceManager.vue';
 import GitProxyManager from './GitProxyManager.vue';
+import VideoConverter from './VideoConverter.vue';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { getCurrentWindow } from '@tauri-apps/api/window';
+
 
 // 系统设置的缩放率
 const scaleFactor = ref(1);
@@ -82,6 +84,11 @@ onUnmounted(() => {
             <!-- 资源管理 Tab -->
             <el-tab-pane label="资源管理">
                 <ResourceManager />
+            </el-tab-pane>
+
+            <!-- 视频转换 Tab -->
+            <el-tab-pane label="视频转换">
+                <VideoConverter />
             </el-tab-pane>
 
             <!-- 设置 Tab -->

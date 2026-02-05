@@ -1,9 +1,10 @@
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 use std::os::windows::process::CommandExt;
-use std::process::{Command, Stdio}; 
+use std::path::PathBuf;
+use std::process::{Command, Stdio};
 mod file_system;
 use file_system::read_directory;
-use tauri::Manager;
+use tauri::{AppHandle, Manager};
 
 #[tauri::command]
 fn greet(name: &str) -> String {
@@ -16,7 +17,12 @@ pub fn run() {
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
-        .invoke_handler(tauri::generate_handler![greet, my_custom_command, read_directory])
+        .invoke_handler(tauri::generate_handler![
+            greet,
+            my_custom_command,
+            read_directory,
+            convert_video_ffmpeg
+        ])
         .setup(|app| {
             // 先获取启动画面窗口，确保它优先显示
             let splashscreen = app.get_webview_window("splashscreen").expect("无法获取启动窗口");
@@ -80,5 +86,80 @@ fn my_custom_command(command: String) -> String {
 
     // 返回命令的输出作为字符串
     String::from_utf8_lossy(&output.stdout).to_string()
+}
+
+#[tauri::command]
+fn convert_video_ffmpeg(
+    app: AppHandle,
+    input: String,
+    output: String,
+    convert_type: String,
+    quality: String,
+) -> Result<(), String> {
+    let mut args: Vec<String> = Vec::new();
+    args.push("-y".to_string());
+    args.push("-i".to_string());
+    args.push(input.clone());
+
+    match convert_type.as_str() {
+        "avi-to-mp4" => {
+            let (preset, crf) = match quality.as_str() {
+                "high" => ("slow", "18"),
+                "low" => ("fast", "28"),
+                _ => ("medium", "23"),
+            };
+            args.push("-c:v".to_string());
+            args.push("libx264".to_string());
+            args.push("-preset".to_string());
+            args.push(preset.to_string());
+            args.push("-crf".to_string());
+            args.push(crf.to_string());
+            args.push("-c:a".to_string());
+            args.push("aac".to_string());
+            args.push("-b:a".to_string());
+            args.push("192k".to_string());
+        }
+        "m3u8-to-mp4" => {
+            args.push("-c".to_string());
+            args.push("copy".to_string());
+            args.push("-bsf:a".to_string());
+            args.push("aac_adtstoasc".to_string());
+        }
+        other => {
+            return Err(format!("不支持的转换类型: {}", other));
+        }
+    }
+
+    args.push(output.clone());
+
+    let resource_dir = app
+        .path()
+        .resource_dir()
+        .map_err(|e| e.to_string())?;
+
+    let ffmpeg_path: PathBuf = resource_dir
+        .join("resources")
+        .join("ffmpeg")
+        .join("ffmpeg.exe");
+
+    if !ffmpeg_path.is_file() {
+        return Err(
+            "未找到 ffmpeg 可执行文件，请确认 src-tauri/resources/ffmpeg/ffmpeg.exe 是否存在".to_string(),
+        );
+    }
+
+    let status = Command::new(ffmpeg_path)
+        .args(&args)
+        .status()
+        .map_err(|e| e.to_string())?;
+
+    if status.success() {
+        Ok(())
+    } else {
+        Err(format!(
+            "ffmpeg 执行失败，退出码: {:?}",
+            status.code().unwrap_or(-1)
+        ))
+    }
 }
 
