@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import { ElMessage } from 'element-plus';
+import { Setting } from '@element-plus/icons-vue';
 import { open } from '@tauri-apps/plugin-dialog';
 import { invoke } from '@tauri-apps/api/core';
 
@@ -19,9 +20,10 @@ const inputName = computed(() => {
 });
 
 const convertType = ref<ConvertType>('avi-to-mp4');
-const quality = ref<Quality>('medium');
+const quality = ref<Quality>('high');
 const loadingText = ref('');
 const converting = ref(false);
+const settingsVisible = ref(false);
 
 const outputDirLabel = computed(() => {
   if (outputDir.value) {
@@ -31,6 +33,16 @@ const outputDirLabel = computed(() => {
     return '未选择目录，将使用输入文件所在目录';
   }
   return '未选择目录';
+});
+
+const qualityLabel = computed(() => {
+  if (quality.value === 'high') {
+    return '高画质';
+  }
+  if (quality.value === 'low') {
+    return '低画质';
+  }
+  return '中等画质';
 });
 
 const detectTypeFromPath = () => {
@@ -152,143 +164,168 @@ const convert = async () => {
 
 <template>
   <div class="video-converter">
-    <div class="panel">
-      <h2 class="title">
-        视频格式转换
-      </h2>
-      <p class="subtitle">
-        支持 AVI 转 MP4 和 M3U8 转 MP4
-      </p>
-
-      <div class="form-item">
-        <span class="label">
-          选择输入文件
-        </span>
-        <div class="file-row">
-          <el-button type="primary" @click="chooseFile" :disabled="converting">
-            选择文件
+    <div class="task-bar">
+      <div class="file-info">
+        <div class="file-row-main">
+          <span class="file-name-primary">
+            {{ inputName || '请选择要转换的视频文件' }}
+          </span>
+          <el-tag v-if="convertType === 'avi-to-mp4'" size="small" type="info">
+            AVI → MP4
+          </el-tag>
+          <el-tag v-else size="small" type="info">
+            M3U8 → MP4
+          </el-tag>
+          <el-button
+            circle
+            text
+            class="settings-btn"
+            @click="settingsVisible = true"
+          >
+            <el-icon>
+              <Setting />
+            </el-icon>
           </el-button>
-          <span class="file-name">
-            {{ inputName || '未选择文件' }}
+        </div>
+        <div class="file-row-sub">
+          <span class="sub-text">
+            输出到：{{ outputDirLabel }}
+          </span>
+          <span class="sub-text">
+            画质：{{ qualityLabel }}
+          </span>
+          <span class="sub-text">
+            输出文件名：{{ getOutputName() }}
           </span>
         </div>
       </div>
 
-      <div class="form-item">
-        <span class="label">
+      <div class="task-actions">
+        <el-button type="primary" @click="chooseFile" :disabled="converting">
+          选择文件
+        </el-button>
+        <el-button @click="chooseOutputDir" :disabled="converting">
           输出目录
-        </span>
-        <div class="file-row">
-          <el-button type="primary" @click="chooseOutputDir" :disabled="converting">
-            选择输出目录
-          </el-button>
-          <span class="file-name">
-            {{ outputDirLabel }}
-          </span>
-        </div>
-      </div>
-
-      <div class="form-item">
-        <span class="label">
-          转换类型
-        </span>
-        <el-radio-group v-model="convertType" :disabled="converting">
-          <el-radio-button label="avi-to-mp4">
-            AVI 转 MP4
-          </el-radio-button>
-          <el-radio-button label="m3u8-to-mp4">
-            M3U8 转 MP4
-          </el-radio-button>
-        </el-radio-group>
-      </div>
-
-      <div class="form-item">
-        <span class="label">
-          导出画质
-        </span>
-        <el-radio-group v-model="quality" :disabled="converting">
-          <el-radio-button label="high">
-            高画质
-          </el-radio-button>
-          <el-radio-button label="medium">
-            中等画质
-          </el-radio-button>
-          <el-radio-button label="low">
-            低画质
-          </el-radio-button>
-        </el-radio-group>
-      </div>
-
-      <div class="form-item">
-        <span class="label">
-          输出文件名
-        </span>
-        <span class="file-name">
-          {{ getOutputName() }}
-        </span>
-      </div>
-
-      <div class="actions">
-        <el-button type="success" :loading="converting" @click="convert">
-          开始转换
+        </el-button>
+        <el-button
+          type="danger"
+          class="convert-btn"
+          :loading="converting"
+          @click="convert"
+        >
+          转换
         </el-button>
       </div>
+    </div>
 
-      <div v-if="converting || loadingText" class="status">
-        <div class="status-text">
-          {{ loadingText || '正在转换视频，请稍候...' }}
-        </div>
+    <div v-if="converting || loadingText" class="status">
+      <div class="status-text">
+        {{ loadingText || '正在转换视频，请稍候...' }}
       </div>
     </div>
+
+    <el-dialog
+      v-model="settingsVisible"
+      title="设置"
+      width="520px"
+      class="settings-dialog"
+    >
+      <el-tabs model-value="video" class="settings-tabs">
+        <el-tab-pane label="视频" name="video">
+          <div class="settings-form">
+            <div class="settings-item">
+              <span class="settings-label">
+                转换类型
+              </span>
+              <el-radio-group
+                v-model="convertType"
+                size="small"
+                :disabled="converting"
+              >
+                <el-radio-button label="avi-to-mp4">
+                  AVI 转 MP4
+                </el-radio-button>
+                <el-radio-button label="m3u8-to-mp4">
+                  M3U8 转 MP4
+                </el-radio-button>
+              </el-radio-group>
+            </div>
+
+            <div class="settings-item">
+              <span class="settings-label">
+                导出画质
+              </span>
+              <el-radio-group
+                v-model="quality"
+                size="small"
+                :disabled="converting"
+              >
+                <el-radio-button label="high">
+                  高画质
+                </el-radio-button>
+                <el-radio-button label="medium">
+                  中等画质
+                </el-radio-button>
+                <el-radio-button label="low">
+                  低画质
+                </el-radio-button>
+              </el-radio-group>
+            </div>
+          </div>
+        </el-tab-pane>
+        <el-tab-pane label="音频" name="audio">
+          <div class="placeholder-tip">
+            暂未提供音频参数设置
+          </div>
+        </el-tab-pane>
+      </el-tabs>
+
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="settingsVisible = false">
+            取消
+          </el-button>
+          <el-button type="primary" @click="settingsVisible = false">
+            确定
+          </el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <style scoped>
 .video-converter {
   height: 100%;
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
-  padding: 24px;
+  padding: 20px 24px;
   box-sizing: border-box;
 }
 
-.panel {
-  width: 100%;
-  max-width: 720px;
+.task-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   background-color: #ffffff;
   border-radius: 12px;
-  padding: 24px 32px;
+  padding: 16px 20px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
 }
 
-.title {
-  font-size: 20px;
-  margin-bottom: 4px;
-  color: #303133;
+.file-info {
+  flex: 1;
+  min-width: 0;
 }
 
-.subtitle {
-  margin: 0;
-  margin-bottom: 24px;
-  color: #909399;
-  font-size: 13px;
-}
-
-.form-item {
-  margin-bottom: 18px;
-}
-
-.label {
-  display: inline-block;
-  margin-bottom: 8px;
-  color: #606266;
-  font-size: 13px;
-}
-
-.file-row {
+.file-row-main {
   display: flex;
   align-items: center;
+  gap: 10px;
+}
+
+.file-row-sub {
+  margin-top: 6px;
+  display: flex;
+  flex-wrap: wrap;
   gap: 12px;
 }
 
@@ -298,17 +335,113 @@ const convert = async () => {
   word-break: break-all;
 }
 
-.actions {
-  margin-top: 8px;
+.file-name-primary {
+  font-size: 14px;
+  font-weight: 500;
+  color: #303133;
+  max-width: 360px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sub-text {
+  font-size: 12px;
+  color: #909399;
+}
+
+.settings-btn {
+  margin-left: 4px;
+}
+
+.task-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: 24px;
+}
+
+.convert-btn {
+  padding: 10px 26px;
+  font-size: 15px;
+  font-weight: 600;
 }
 
 .status {
-  margin-top: 24px;
+  margin-top: 12px;
 }
 
 .status-text {
   margin-top: 8px;
   font-size: 13px;
   color: #606266;
+}
+
+.settings-dialog :deep(.el-dialog__body) {
+  background-color: #202124;
+  color: #e5e5e5;
+  padding-top: 10px;
+}
+
+.settings-dialog :deep(.el-dialog__header) {
+  background-color: #202124;
+  border-bottom: none;
+  color: #e5e5e5;
+}
+
+.settings-dialog :deep(.el-dialog__title) {
+  color: #e5e5e5;
+}
+
+.settings-tabs {
+  margin-top: 4px;
+}
+
+.settings-tabs :deep(.el-tabs__header) {
+  margin: 0 0 12px;
+}
+
+.settings-tabs :deep(.el-tabs__nav-wrap)::after {
+  background-color: transparent;
+}
+
+.settings-form {
+  padding: 4px 4px 8px;
+}
+
+.settings-item {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.settings-label {
+  width: 90px;
+  font-size: 13px;
+  color: #e5e5e5;
+}
+
+.settings-item :deep(.el-radio-button__inner) {
+  background-color: #303134;
+  border-color: #424346;
+  color: #e5e5e5;
+}
+
+.settings-item :deep(.el-radio-button__original-radio:checked + .el-radio-button__inner) {
+  background-color: #409eff;
+  border-color: #409eff;
+  color: #ffffff;
+}
+
+.placeholder-tip {
+  padding: 12px 4px;
+  font-size: 13px;
+  color: #b0b0b0;
+}
+
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
 }
 </style>
