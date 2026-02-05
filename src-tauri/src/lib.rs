@@ -95,7 +95,7 @@ fn convert_video_ffmpeg(
     output: String,
     convert_type: String,
     quality: String,
-) -> Result<(), String> {
+) -> Result<String, String> {
     let mut args: Vec<String> = Vec::new();
     args.push("-y".to_string());
     args.push("-i".to_string());
@@ -148,18 +148,33 @@ fn convert_video_ffmpeg(
         );
     }
 
-    let status = Command::new(ffmpeg_path)
+    let output_result = Command::new(ffmpeg_path)
         .args(&args)
-        .status()
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .output()
         .map_err(|e| e.to_string())?;
 
-    if status.success() {
-        Ok(())
+    let stderr_text = String::from_utf8_lossy(&output_result.stderr).to_string();
+    let stdout_text = String::from_utf8_lossy(&output_result.stdout).to_string();
+
+    if output_result.status.success() {
+        let combined = if stderr_text.trim().is_empty() {
+            stdout_text
+        } else if stdout_text.trim().is_empty() {
+            stderr_text
+        } else {
+            format!("STDOUT:\n{}\n\nSTDERR:\n{}", stdout_text, stderr_text)
+        };
+        Ok(combined)
     } else {
-        Err(format!(
-            "ffmpeg 执行失败，退出码: {:?}",
-            status.code().unwrap_or(-1)
-        ))
+        let code = output_result.status.code().unwrap_or(-1);
+        let message = if stderr_text.trim().is_empty() {
+            stdout_text
+        } else {
+            stderr_text
+        };
+        Err(format!("ffmpeg 执行失败，退出码 {}:\n{}", code, message))
     }
 }
 

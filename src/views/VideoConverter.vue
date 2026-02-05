@@ -24,6 +24,8 @@ const quality = ref<Quality>('high');
 const loadingText = ref('');
 const converting = ref(false);
 const settingsVisible = ref(false);
+const logDialogVisible = ref(false);
+const logContent = ref('');
 
 const outputDirLabel = computed(() => {
   if (outputDir.value) {
@@ -141,23 +143,30 @@ const convert = async () => {
     const baseDir = outputDir.value || getInputDir();
     if (!baseDir) {
       ElMessage.error('无法确定输出目录，请先选择输出目录或有效输入文件');
+      converting.value = false;
+      loadingText.value = '';
       return;
     }
     const outputName = getOutputName();
     const outputPath = joinPath(baseDir, outputName);
-    await invoke('convert_video_ffmpeg', {
+    const result = await invoke<string>('convert_video_ffmpeg', {
       input: inputPath.value,
       output: outputPath,
       convertType: convertType.value,
       quality: quality.value
     });
+    logContent.value = result || '';
+    loadingText.value = '转换成功';
     ElMessage.success('转换完成');
   } catch (error) {
     console.error(error);
+    logContent.value =
+      (error as { message?: string }).message ||
+      String(error);
+    loadingText.value = '转换失败';
     ElMessage.error('视频转换失败');
   } finally {
     converting.value = false;
-    loadingText.value = '';
   }
 };
 </script>
@@ -218,9 +227,25 @@ const convert = async () => {
       </div>
     </div>
 
-    <div v-if="converting || loadingText" class="status">
+    <div v-if="converting || loadingText || logContent" class="status">
+      <el-progress
+        v-if="converting || logContent"
+        :percentage="100"
+        :indeterminate="converting"
+        stroke-width="3"
+        :status="converting ? undefined : 'success'"
+      />
       <div class="status-text">
-        {{ loadingText || '正在转换视频，请稍候...' }}
+        {{ loadingText }}
+        <el-button
+          v-if="logContent"
+          link
+          type="primary"
+          class="log-link"
+          @click="logDialogVisible = true"
+        >
+          查看详细日志
+        </el-button>
       </div>
     </div>
 
@@ -287,6 +312,23 @@ const convert = async () => {
           </el-button>
           <el-button type="primary" @click="settingsVisible = false">
             确定
+          </el-button>
+        </span>
+      </template>
+    </el-dialog>
+
+    <el-dialog
+      v-model="logDialogVisible"
+      title="转换日志"
+      width="640px"
+    >
+      <pre class="log-content">
+{{ logContent }}
+      </pre>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button type="primary" @click="logDialogVisible = false">
+            关闭
           </el-button>
         </span>
       </template>
@@ -377,6 +419,10 @@ const convert = async () => {
   color: #606266;
 }
 
+.log-link {
+  margin-left: 8px;
+}
+
 .settings-dialog :deep(.el-dialog__body) {
   background-color: #202124;
   color: #e5e5e5;
@@ -443,5 +489,16 @@ const convert = async () => {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
+}
+
+.log-content {
+  max-height: 360px;
+  overflow: auto;
+  font-size: 12px;
+  line-height: 1.5;
+  background-color: #1e1e1e;
+  color: #e5e5e5;
+  padding: 12px;
+  border-radius: 4px;
 }
 </style>
