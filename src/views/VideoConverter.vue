@@ -32,9 +32,6 @@ const outputDirLabel = computed(() => {
   if (outputDir.value) {
     return outputDir.value;
   }
-  if (inputPath.value) {
-    return '未选择目录，将使用输入文件所在目录';
-  }
   return '未选择目录';
 });
 
@@ -150,15 +147,24 @@ const chooseOutputDir = async () => {
   }
 };
 
+const resolveExplorerPath = () => {
+  if (outputDir.value) {
+    return outputDir.value;
+  }
+  return '';
+};
+
 const openOutputDirInExplorer = async () => {
-  const baseDir = outputDir.value || getInputDir();
+  const baseDir = resolveExplorerPath();
   if (!baseDir) {
     ElMessage.warning('请先选择输出目录或输入文件');
     return;
   }
+  const normalizedDir = baseDir.replace(/\//g, '\\').trim();
+  const command = `explorer ${normalizedDir}`;
   try {
     await invoke<string>('my_custom_command', {
-      command: `explorer "${baseDir}"`
+      command
     });
   } catch (error) {
     console.error(error);
@@ -231,26 +237,30 @@ const convert = async () => {
           </el-button>
         </div>
         <div class="file-row-sub">
-          <div class="sub-text-with-icon">
-            <span class="sub-text">
-              输出到：{{ outputDirLabel }}
+          <div class="file-row-sub-main">
+            <div class="sub-text-with-icon">
+              <el-tooltip :content="outputDirLabel" placement="top" :show-after="300">
+                <span class="sub-text sub-text-path">
+                  输出到：{{ outputDirLabel }}
+                </span>
+              </el-tooltip>
+              <el-button
+                v-if="outputDir || inputPath"
+                text
+                circle
+                class="open-dir-btn"
+                :disabled="converting"
+                @click="openOutputDirInExplorer"
+              >
+                <el-icon>
+                  <Folder />
+                </el-icon>
+              </el-button>
+            </div>
+            <span class="sub-text sub-text-quality">
+              画质：{{ qualityLabel }}
             </span>
-            <el-button
-              v-if="outputDir || inputPath"
-              text
-              circle
-              class="open-dir-btn"
-              :disabled="converting"
-              @click="openOutputDirInExplorer"
-            >
-              <el-icon>
-                <Folder />
-              </el-icon>
-            </el-button>
           </div>
-          <span class="sub-text">
-            画质：{{ qualityLabel }}
-          </span>
           <span class="sub-text">
             输出文件名：{{ getOutputName() }}
           </span>
@@ -415,14 +425,32 @@ const convert = async () => {
 .file-row-sub {
   margin-top: 6px;
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.file-row-sub-main {
+  display: flex;
+  align-items: center;
   gap: 12px;
 }
 
 .sub-text-with-icon {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+.sub-text-path {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sub-text-quality {
+  flex-shrink: 0;
 }
 
 .file-name {
