@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import { ElMessage } from 'element-plus';
-import { Setting } from '@element-plus/icons-vue';
+import { Setting, Folder } from '@element-plus/icons-vue';
 import { open } from '@tauri-apps/plugin-dialog';
 import { invoke } from '@tauri-apps/api/core';
+import { exists } from '@tauri-apps/plugin-fs';
 
 type ConvertType = 'avi-to-mp4' | 'm3u8-to-mp4';
 type Quality = 'high' | 'medium' | 'low';
@@ -59,44 +60,6 @@ const detectTypeFromPath = () => {
   }
 };
 
-const chooseFile = async () => {
-  try {
-    const selected = await open({
-      multiple: false,
-      filters: [
-        {
-          name: '视频文件',
-          extensions: ['avi', 'm3u8']
-        }
-      ]
-    });
-    if (!selected || Array.isArray(selected)) {
-      return;
-    }
-    inputPath.value = selected;
-    detectTypeFromPath();
-  } catch (error) {
-    console.error(error);
-    ElMessage.error('选择文件失败');
-  }
-};
-
-const chooseOutputDir = async () => {
-  try {
-    const selected = await open({
-      directory: true,
-      multiple: false
-    });
-    if (!selected || Array.isArray(selected)) {
-      return;
-    }
-    outputDir.value = selected;
-  } catch (error) {
-    console.error(error);
-    ElMessage.error('选择输出目录失败');
-  }
-};
-
 const getOutputName = () => {
   if (!inputName.value) {
     return 'output.mp4';
@@ -130,6 +93,77 @@ const joinPath = (dir: string, name: string) => {
   const normalizedDir = dir.replace(/[\\/]+$/, '');
   const sep = normalizedDir.includes('\\') ? '\\' : '/';
   return `${normalizedDir}${sep}${name}`;
+};
+
+const checkOutputFileExists = async (dir: string) => {
+  const outputName = getOutputName();
+  if (!outputName) {
+    return;
+  }
+  const outputPath = joinPath(dir, outputName);
+  try {
+    const fileExists = await exists(outputPath);
+    if (fileExists) {
+      ElMessage.warning('输出目录中已存在同名文件，转换后将覆盖该文件');
+    }
+  } catch (error) {
+    console.error(error);
+  }
+};
+
+const chooseFile = async () => {
+  try {
+    const selected = await open({
+      multiple: false,
+      filters: [
+        {
+          name: '视频文件',
+          extensions: ['avi', 'm3u8']
+        }
+      ]
+    });
+    if (!selected || Array.isArray(selected)) {
+      return;
+    }
+    inputPath.value = selected;
+    detectTypeFromPath();
+  } catch (error) {
+    console.error(error);
+    ElMessage.error('选择文件失败');
+  }
+};
+
+const chooseOutputDir = async () => {
+  try {
+    const selected = await open({
+      directory: true,
+      multiple: false
+    });
+    if (!selected || Array.isArray(selected)) {
+      return;
+    }
+    outputDir.value = selected;
+    await checkOutputFileExists(selected);
+  } catch (error) {
+    console.error(error);
+    ElMessage.error('选择输出目录失败');
+  }
+};
+
+const openOutputDirInExplorer = async () => {
+  const baseDir = outputDir.value || getInputDir();
+  if (!baseDir) {
+    ElMessage.warning('请先选择输出目录或输入文件');
+    return;
+  }
+  try {
+    await invoke<string>('my_custom_command', {
+      command: `explorer "${baseDir}"`
+    });
+  } catch (error) {
+    console.error(error);
+    ElMessage.error('打开文件管理器失败');
+  }
 };
 
 const convert = async () => {
@@ -197,9 +231,23 @@ const convert = async () => {
           </el-button>
         </div>
         <div class="file-row-sub">
-          <span class="sub-text">
-            输出到：{{ outputDirLabel }}
-          </span>
+          <div class="sub-text-with-icon">
+            <span class="sub-text">
+              输出到：{{ outputDirLabel }}
+            </span>
+            <el-button
+              v-if="outputDir || inputPath"
+              text
+              circle
+              class="open-dir-btn"
+              :disabled="converting"
+              @click="openOutputDirInExplorer"
+            >
+              <el-icon>
+                <Folder />
+              </el-icon>
+            </el-button>
+          </div>
           <span class="sub-text">
             画质：{{ qualityLabel }}
           </span>
@@ -371,6 +419,12 @@ const convert = async () => {
   gap: 12px;
 }
 
+.sub-text-with-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
 .file-name {
   color: #606266;
   font-size: 13px;
@@ -394,6 +448,10 @@ const convert = async () => {
 
 .settings-btn {
   margin-left: 4px;
+}
+
+.open-dir-btn {
+  padding: 4px;
 }
 
 .task-actions {
