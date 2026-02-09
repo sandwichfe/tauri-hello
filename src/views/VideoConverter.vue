@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import { ElMessage } from 'element-plus';
+import { ElMessage, ElMessageBox } from 'element-plus';
 import { Setting, Folder } from '@element-plus/icons-vue';
 import { open } from '@tauri-apps/plugin-dialog';
 import { invoke } from '@tauri-apps/api/core';
@@ -95,16 +95,15 @@ const joinPath = (dir: string, name: string) => {
 const checkOutputFileExists = async (dir: string) => {
   const outputName = getOutputName();
   if (!outputName) {
-    return;
+    return false;
   }
   const outputPath = joinPath(dir, outputName);
   try {
     const fileExists = await exists(outputPath);
-    if (fileExists) {
-      ElMessage.warning('输出目录中已存在同名文件，转换后将覆盖该文件');
-    }
+    return fileExists;
   } catch (error) {
     console.error(error);
+    return false;
   }
 };
 
@@ -139,8 +138,23 @@ const chooseOutputDir = async () => {
     if (!selected || Array.isArray(selected)) {
       return;
     }
+    const hasFile = await checkOutputFileExists(selected);
+    if (hasFile) {
+      try {
+        await ElMessageBox.confirm(
+          '输出目录中已存在同名文件，转换后将覆盖该文件，是否继续？',
+          '提示',
+          {
+            type: 'warning',
+            confirmButtonText: '确定',
+            cancelButtonText: '取消'
+          }
+        );
+      } catch {
+        return;
+      }
+    }
     outputDir.value = selected;
-    await checkOutputFileExists(selected);
   } catch (error) {
     console.error(error);
     ElMessage.error('选择输出目录失败');
@@ -157,7 +171,7 @@ const resolveExplorerPath = () => {
 const openOutputDirInExplorer = async () => {
   const baseDir = resolveExplorerPath();
   if (!baseDir) {
-    ElMessage.warning('请先选择输出目录或输入文件');
+    ElMessage.warning('请先选择输出目录');
     return;
   }
   const normalizedDir = baseDir.replace(/\//g, '\\').trim();
