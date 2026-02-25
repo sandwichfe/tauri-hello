@@ -49,6 +49,10 @@ const currentIndex = ref(0);
 const showFileDetail = ref(false);
 const detailFile = ref<FileItem | null>(null);
 
+const actionMenuVisible = ref(false);
+const actionMenuPosition = ref({x: 0, y: 0});
+const actionRow = ref<FileItem | null>(null);
+
 // 导航栏与工具栏高度（用于高度计算）
 const tabsHeight = ref(42.8);
 const toolbarHeight = ref(32);
@@ -291,6 +295,34 @@ const handleRowClick = (row: FileItem) => {
   }
 };
 
+const openActionMenu = (event: MouseEvent, row: FileItem) => {
+  const {clientX, clientY} = event;
+  actionRow.value = row;
+  actionMenuPosition.value = {x: clientX, y: clientY};
+  actionMenuVisible.value = true;
+};
+
+const closeActionMenu = () => {
+  actionMenuVisible.value = false;
+  actionRow.value = null;
+};
+
+const handleActionDetail = () => {
+  if (!actionRow.value) {
+    return;
+  }
+  handleViewDetail(actionRow.value);
+  closeActionMenu();
+};
+
+const handleActionDelete = () => {
+  if (!actionRow.value) {
+    return;
+  }
+  handleMoveToRecycleBin(actionRow.value);
+  closeActionMenu();
+};
+
 const handleViewDetail = (row: FileItem) => {
   detailFile.value = row;
   showFileDetail.value = true;
@@ -519,27 +551,11 @@ const applySorting = (prop: string, order: string) => {
           <div class="body-cell size-cell">{{ row.is_dir ? '-' : formatFileSize(row.size) }}</div>
           <div class="body-cell modified-cell">{{ row.modified_time }}</div>
           <div class="body-cell action-cell">
-            <el-dropdown trigger="click">
-              <span class="more-button">
-                <el-icon class="more-icon">
-                  <more-filled/>
-                </el-icon>
-              </span>
-              <template #dropdown>
-                <el-dropdown-menu>
-                  <el-dropdown-item @click.stop="handleViewDetail(row)">
-                    <span class="dropdown-clickable">
-                      详情
-                    </span>
-                  </el-dropdown-item>
-                  <el-dropdown-item @click.stop="handleMoveToRecycleBin(row)">
-                    <span class="dropdown-clickable">
-                      删除
-                    </span>
-                  </el-dropdown-item>
-                </el-dropdown-menu>
-              </template>
-            </el-dropdown>
+            <span class="more-button" @click.stop="openActionMenu($event, row)">
+              <el-icon class="more-icon">
+                <more-filled/>
+              </el-icon>
+            </span>
           </div>
         </div>
       </div>
@@ -551,6 +567,24 @@ const applySorting = (prop: string, order: string) => {
 
     <VideoPreview v-model:visible="showVideoPreview" :video-url="currentVideoUrl"/>
     <ImagePreview v-model:visible="showImagePreview" :image-urls="currentImageUrl" :initial-index="currentIndex"/>
+    <div
+      v-if="actionMenuVisible"
+      class="action-menu-overlay"
+      @click="closeActionMenu"
+    >
+      <div
+        class="action-menu"
+        :style="{ top: actionMenuPosition.y + 'px', left: actionMenuPosition.x + 'px' }"
+        @click.stop
+      >
+        <div class="action-menu-item" @click="handleActionDetail">
+          详情
+        </div>
+        <div class="action-menu-item" @click="handleActionDelete">
+          删除
+        </div>
+      </div>
+    </div>
     <el-dialog
       v-model="showFileDetail"
       title="文件详情"
@@ -683,6 +717,30 @@ const applySorting = (prop: string, order: string) => {
 .dropdown-clickable:active {
   transform: scale(0.98);
   color: #409EFF;
+}
+
+.action-menu-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+}
+
+.action-menu {
+  position: fixed;
+  min-width: 120px;
+  background-color: #fff;
+  border: 1px solid #ebeef5;
+  border-radius: 4px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+}
+
+.action-menu-item {
+  padding: 8px 16px;
+  cursor: pointer;
+}
+
+.action-menu-item:hover {
+  background-color: #f5f7fa;
 }
 
 .sortable {
