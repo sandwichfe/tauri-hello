@@ -38,7 +38,7 @@ pub fn run() {
             // 延迟关闭启动画面并显示主窗口
             std::thread::spawn(move || {
                 // 等待启动画面完全加载并显示
-                std::thread::sleep(std::time::Duration::from_millis(500));
+                std::thread::sleep(std::time::Duration::from_millis(600));
                 
                 // 确保启动画面保持在前台
                 splashscreen.set_focus().unwrap();
