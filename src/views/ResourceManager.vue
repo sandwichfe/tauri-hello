@@ -37,6 +37,8 @@ const configPath = ref('pathConfig.json');
 const sortColumn = ref('');
 const sortOrder = ref('');
 
+const searchKeyword = ref('');
+
 // 预览相关状态
 const showVideoPreview = ref(false);
 const currentVideoUrl = ref('');
@@ -177,6 +179,16 @@ const formatFileSize = (size: number) => {
 
 
 
+const filteredFileList = computed(() => {
+  const keyword = searchKeyword.value.trim().toLowerCase();
+  if (!keyword) {
+    return fileList.value;
+  }
+  return fileList.value.filter((item) =>
+    item.name.toLowerCase().includes(keyword)
+  );
+});
+
 // 选择并打开文件夹
 const selectFolder = async () => {
   try {
@@ -225,6 +237,8 @@ const openFolder = async (nextPath: string, pushHistory = true) => {
     fileList.value = files;
     updateImageFilesMap(files);
     currentPath.value = nextPath;
+
+    searchKeyword.value = '';
 
     if (sortColumn.value && sortOrder.value) {
       applySorting(sortColumn.value, sortOrder.value);
@@ -413,7 +427,13 @@ const applySorting = (prop: string, order: string) => {
           <el-button @click="selectFolder">选择文件夹</el-button>
         </template>
       </el-input>
-      <el-button type="primary" @click="openClassifierWindow" class="classifier-button">
+      <el-input
+        v-model="searchKeyword"
+        placeholder="搜索当前目录"
+        clearable
+        class="search-input"
+      />
+      <el-button type="primary" @click="openClassifierWindow" class="classifier-button" v-if="false">
         打开分类窗口
       </el-button>
     </div>
@@ -438,7 +458,7 @@ const applySorting = (prop: string, order: string) => {
         </div>
       </div>
       <div class="custom-table-body">
-        <div v-for="row in fileList" :key="row.path" class="custom-table-row" @dblclick="handleRowClick(row)" draggable="true" @dragstart="handleDragStart(row, $event)">
+        <div v-for="row in filteredFileList" :key="row.path" class="custom-table-row" @dblclick="handleRowClick(row)" draggable="true" @dragstart="handleDragStart(row, $event)">
           <div class="body-cell type-cell">
             <el-icon>
               <component :is="getFileIcon(row)"/>
@@ -452,7 +472,7 @@ const applySorting = (prop: string, order: string) => {
     </div>
 
     <div class="file-count">
-      共 {{ fileList.length }} 个文件
+      共 {{ filteredFileList.length }} 个文件
     </div>
 
     <VideoPreview v-model:visible="showVideoPreview" :video-url="currentVideoUrl"/>
@@ -595,6 +615,10 @@ const applySorting = (prop: string, order: string) => {
 
 .path-input {
   flex: 1;
+}
+
+.search-input {
+  width: 260px;
 }
 
 .back-button {
