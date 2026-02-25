@@ -1,6 +1,7 @@
 use chrono::{DateTime, Local};
 use serde::{Deserialize, Serialize};
 use std::fs;
+use trash;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct FileInfo {
@@ -33,4 +34,9 @@ pub fn read_directory(path: String) -> Result<Vec<FileInfo>, String> {
     }
 
     Ok(files)
+}
+
+#[tauri::command]
+pub fn move_to_recycle_bin(path: String) -> Result<(), String> {
+    trash::delete(path).map_err(|e| e.to_string())
 }

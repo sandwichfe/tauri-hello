@@ -3,7 +3,7 @@ use std::os::windows::process::CommandExt;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 mod file_system;
-use file_system::read_directory;
+use file_system::{move_to_recycle_bin, read_directory};
 use tauri::{AppHandle, Manager};
 
 #[tauri::command]
@@ -21,6 +21,7 @@ pub fn run() {
             greet,
             my_custom_command,
             read_directory,
+            move_to_recycle_bin,
             convert_video_ffmpeg
         ])
         .setup(|app| {

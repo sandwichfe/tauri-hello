@@ -1,8 +1,8 @@
 <script setup lang="ts">
 // 依赖与组件导入
 import {computed, nextTick, onMounted, onUnmounted, ref} from 'vue';
-import {ElMessage} from 'element-plus';
-import {ArrowLeft, Document, Folder, Headset, Picture, VideoCamera} from '@element-plus/icons-vue';
+import {ElMessage, ElMessageBox} from 'element-plus';
+import {ArrowLeft, Document, Folder, Headset, MoreFilled, Picture, VideoCamera} from '@element-plus/icons-vue';
 import {convertFileSrc, invoke} from '@tauri-apps/api/core';
 import {open} from '@tauri-apps/plugin-dialog';
 import {BaseDirectory, exists, mkdir, readTextFile, writeTextFile} from '@tauri-apps/plugin-fs';
@@ -45,6 +45,9 @@ const currentVideoUrl = ref('');
 const showImagePreview = ref(false);
 const currentImageUrl = ref<string[]>([]);
 const currentIndex = ref(0);
+
+const showFileDetail = ref(false);
+const detailFile = ref<FileItem | null>(null);
 
 // 导航栏与工具栏高度（用于高度计算）
 const tabsHeight = ref(42.8);
@@ -288,6 +291,51 @@ const handleRowClick = (row: FileItem) => {
   }
 };
 
+const handleViewDetail = (row: FileItem) => {
+  detailFile.value = row;
+  showFileDetail.value = true;
+};
+
+const handleMoveToRecycleBin = async (row: FileItem) => {
+  try {
+    await ElMessageBox.confirm(
+      `确定将“${row.name}”移动到回收站吗？`,
+      '提示',
+      {
+        type: 'warning',
+        confirmButtonText: '确定',
+        cancelButtonText: '取消'
+      }
+    );
+  } catch {
+    return;
+  }
+
+  try {
+    await invoke('move_to_recycle_bin', {path: row.path});
+    ElMessage.success('已移动到回收站');
+    if (currentPath.value) {
+      await openFolder(currentPath.value, false);
+    }
+  } catch (error) {
+    ElMessage.error('移动到回收站失败');
+    console.error(error);
+  }
+};
+
+const handleCopyPath = async () => {
+  if (!detailFile.value) {
+    return;
+  }
+  try {
+    await navigator.clipboard.writeText(detailFile.value.path);
+    ElMessage.success('路径已复制到剪贴板');
+  } catch (error) {
+    console.error(error);
+    ElMessage.error('复制路径失败');
+  }
+};
+
 // 开始拖拽：设置拖拽数据（JSON）与拖拽效果
 const handleDragStart = (row: FileItem, event: DragEvent) => {
   if (event.dataTransfer) {
@@ -456,6 +504,9 @@ const applySorting = (prop: string, order: string) => {
           修改时间
           <span :class="['sort-caret', sortOrder]" :style="{ visibility: sortColumn === 'modified_time' ? 'visible' : 'hidden' }"></span>
         </div>
+        <div class="header-cell action-cell">
+          操作
+        </div>
       </div>
       <div class="custom-table-body">
         <div v-for="row in filteredFileList" :key="row.path" class="custom-table-row" @dblclick="handleRowClick(row)" draggable="true" @dragstart="handleDragStart(row, $event)">
@@ -467,6 +518,29 @@ const applySorting = (prop: string, order: string) => {
           <div class="body-cell name-cell">{{ row.name }}</div>
           <div class="body-cell size-cell">{{ row.is_dir ? '-' : formatFileSize(row.size) }}</div>
           <div class="body-cell modified-cell">{{ row.modified_time }}</div>
+          <div class="body-cell action-cell">
+            <el-dropdown trigger="click">
+              <span class="more-button">
+                <el-icon class="more-icon">
+                  <more-filled/>
+                </el-icon>
+              </span>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item @click.stop="handleViewDetail(row)">
+                    <span class="dropdown-clickable">
+                      详情
+                    </span>
+                  </el-dropdown-item>
+                  <el-dropdown-item @click.stop="handleMoveToRecycleBin(row)">
+                    <span class="dropdown-clickable">
+                      删除
+                    </span>
+                  </el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
+          </div>
         </div>
       </div>
     </div>
@@ -477,6 +551,28 @@ const applySorting = (prop: string, order: string) => {
 
     <VideoPreview v-model:visible="showVideoPreview" :video-url="currentVideoUrl"/>
     <ImagePreview v-model:visible="showImagePreview" :image-urls="currentImageUrl" :initial-index="currentIndex"/>
+    <el-dialog
+      v-model="showFileDetail"
+      title="文件详情"
+      width="480px"
+    >
+      <div v-if="detailFile">
+        <p>名称：{{ detailFile.name }}</p>
+        <p>类型：{{ detailFile.is_dir ? '文件夹' : '文件' }}</p>
+        <p>大小：{{ detailFile.is_dir ? '-' : formatFileSize(detailFile.size) }}</p>
+        <p>修改时间：{{ detailFile.modified_time }}</p>
+        <div class="detail-path-row">
+          <span class="detail-path-text">路径：{{ detailFile.path }}</span>
+          <el-button
+            link
+            type="primary"
+            size="small"
+            @click="handleCopyPath"
+          >复制
+          </el-button>
+        </div>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
@@ -544,6 +640,49 @@ const applySorting = (prop: string, order: string) => {
 
 .modified-cell {
   width: 160px;
+}
+
+.action-cell {
+  width: 120px;
+  text-align: right;
+}
+
+.more-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 14px;
+  cursor: pointer;
+  transition: background-color 0.15s ease, transform 0.1s ease;
+}
+
+.more-button:hover {
+  background-color: rgba(0, 0, 0, 0.04);
+}
+
+.more-button:active {
+  background-color: rgba(0, 0, 0, 0.08);
+  transform: scale(0.95);
+}
+
+.more-icon {
+  font-size: 18px;
+  color: #909399;
+}
+
+.dropdown-clickable {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  width: 100%;
+  transition: transform 0.1s ease, color 0.1s ease;
+}
+
+.dropdown-clickable:active {
+  transform: scale(0.98);
+  color: #409EFF;
 }
 
 .sortable {
@@ -655,5 +794,19 @@ const applySorting = (prop: string, order: string) => {
 .draggable-cell:hover {
   background-color: #f5f7fa;
   border-radius: 4px;
+}
+
+.detail-path-row {
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.detail-path-text {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 </style>
