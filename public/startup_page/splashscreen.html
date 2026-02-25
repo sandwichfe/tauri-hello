@@ -12,27 +12,72 @@
       height: 100vh;
       background-color: transparent;
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      color: #333;
       overflow: hidden;
+      position: relative;
     }
+
+    /* ===== 背景柔光层 ===== */
+    body::before {
+      content: "";
+      position: absolute;
+      width: 800px;
+      height: 800px;
+      background: radial-gradient(circle,
+      rgba(210,230,255,0.25),
+      rgba(210,230,255,0.08),
+      transparent 70%);
+      border-radius: 50%;
+      filter: blur(60px);
+      z-index: -2;
+    }
+
+    /* ===== 极淡纹理层 ===== */
+    body::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background-image:
+          linear-gradient(rgba(200,215,235,0.05) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(200,215,235,0.05) 1px, transparent 1px);
+      background-size: 60px 60px;
+      z-index: -1;
+      opacity: 0.25;
+    }
+
     .container {
       text-align: center;
       position: relative;
     }
+
     .app-name {
       font-size: 24px;
       font-weight: bold;
-      margin-bottom: 30px;
+      margin-bottom: 8px;
+      color: #7b98c2;
       opacity: 0;
       animation: fadeIn 0.8s ease-in-out forwards;
     }
+
+    /* 副标题 */
+    .sub-title {
+      font-size: 13px;
+      color: #9fb4d6;
+      letter-spacing: 1px;
+      margin-bottom: 25px;
+      opacity: 0.8;
+    }
+
+    /* ===== 你原来的动画不动 ===== */
+
     .loader {
       position: relative;
-      width: 120px;  /* 增大容器尺寸 */
+      width: 120px;
       height: 120px;
-      margin: 0 auto 30px;
+      margin: 0 auto 25px;
     }
-    .loader:before, .loader:after {
+
+    .loader::before,
+    .loader::after {
       content: '';
       position: absolute;
       border-radius: 50%;
@@ -40,42 +85,65 @@
       left: 50%;
       width: 100%;
       height: 100%;
-      transform: translate(-50%, -50%);  /* 确保完全居中 */
+      transform: translate(-50%, -50%);
       background-color: rgba(136, 207, 256, 0.7);
       animation: pulse 2s ease-in-out infinite;
     }
-    .loader:after {
+
+    .loader::after {
       animation-delay: 1s;
     }
+
     .progress-text {
       font-size: 16px;
-      margin-top: 55px;
-      opacity: 0.8;
+      margin-top: 40px;
+      color: #8fa8cc;
+      opacity: 0.9;
     }
+
+    /* 底部分割线 */
+    .divider {
+      width: 80px;
+      height: 1px;
+      margin: 25px auto 0;
+      background: linear-gradient(to right,
+      transparent,
+      rgba(180,200,230,0.4),
+      transparent);
+    }
+
     @keyframes pulse {
-      0% { 
-        transform: translate(-50%, -50%) scale(0.6); 
-        opacity: 0.8; 
+      0% {
+        transform: translate(-50%, -50%) scale(0.6);
+        opacity: 0.8;
       }
-      50% { 
-        transform: translate(-50%, -50%) scale(1.4);  /* 增大放大比例 */
-        opacity: 0.2; 
+      50% {
+        transform: translate(-50%, -50%) scale(1.4);
+        opacity: 0.2;
       }
-      100% { 
-        transform: translate(-50%, -50%) scale(0.6); 
-        opacity: 0.8; 
+      100% {
+        transform: translate(-50%, -50%) scale(0.6);
+        opacity: 0.8;
       }
     }
+
     @keyframes fadeIn {
       from { opacity: 0; transform: translateY(-15px); }
       to { opacity: 1; transform: translateY(0); }
     }
+
   </style>
 </head>
 <body>
-  <div class="container">
-    <div class="loader"></div>
-    <div class="progress-text">稍等片刻...</div>
-  </div>
+<div class="container">
+  <div class="app-name">sandwich-little-tool</div>
+  <div class="sub-title">忽如一夜春风来，千树万树梨花开</div>
+
+  <div class="loader"></div>
+
+  <div class="progress-text">稍等片刻...</div>
+
+  <div class="divider"></div>
+</div>
 </body>
 </html>
