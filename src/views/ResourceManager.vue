@@ -421,20 +421,20 @@ const applySorting = (prop: string, order: string) => {
     <div class="custom-table-container" :style="{ height: scrollbarHeight }" ref="scrollRef">
       <div class="custom-table-header">
         <div class="header-cell type-cell sortable" @click="handleSortChange({ prop: 'is_dir' })">
-          <span :class="['sort-caret', sortOrder]" :style="{ visibility: sortColumn === 'is_dir' ? 'visible' : 'hidden' }"></span>
           类型
+          <span :class="['sort-caret', sortOrder]" :style="{ visibility: sortColumn === 'is_dir' ? 'visible' : 'hidden' }"></span>
         </div>
         <div class="header-cell name-cell sortable" @click="handleSortChange({ prop: 'name' })">
-          <span :class="['sort-caret', sortOrder]" :style="{ visibility: sortColumn === 'name' ? 'visible' : 'hidden' }"></span>
           名称
+          <span :class="['sort-caret', sortOrder]" :style="{ visibility: sortColumn === 'name' ? 'visible' : 'hidden' }"></span>
         </div>
         <div class="header-cell size-cell sortable" @click="handleSortChange({ prop: 'size' })">
-          <span :class="['sort-caret', sortOrder]" :style="{ visibility: sortColumn === 'size' ? 'visible' : 'hidden' }"></span>
           大小
+          <span :class="['sort-caret', sortOrder]" :style="{ visibility: sortColumn === 'size' ? 'visible' : 'hidden' }"></span>
         </div>
         <div class="header-cell modified-cell sortable" @click="handleSortChange({ prop: 'modified_time' })">
-          <span :class="['sort-caret', sortOrder]" :style="{ visibility: sortColumn === 'modified_time' ? 'visible' : 'hidden' }"></span>
           修改时间
+          <span :class="['sort-caret', sortOrder]" :style="{ visibility: sortColumn === 'modified_time' ? 'visible' : 'hidden' }"></span>
         </div>
       </div>
       <div class="custom-table-body">
@@ -495,18 +495,19 @@ const applySorting = (prop: string, order: string) => {
   overflow: hidden;
   text-overflow: ellipsis;
   font-size: 14px;
-  text-align: left;
 }
 
 .body-cell {
   color: #303133;
+  text-align: left;
 }
 
 .header-cell {
   font-weight: normal;
   color: #606266;
   position: relative;
-  padding-top: 20px; /* 为箭头增加顶部空间 */
+  display: inline-flex;
+  align-items: center;
 }
 
 .type-cell {
@@ -530,20 +531,47 @@ const applySorting = (prop: string, order: string) => {
 }
 
 .sort-caret {
-  position: absolute;
-  top: 5px;
-  left: 50%;
-  transform: translateX(-50%);
+  margin-left: 4px;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 12px;
+  height: 14px;
+}
+
+.sort-caret::before,
+.sort-caret::after {
+  content: '';
   width: 0;
   height: 0;
   border-left: 4px solid transparent;
   border-right: 4px solid transparent;
-  border-bottom: 4px solid #606266;
-  transition: transform 0.3s;
 }
 
-.sort-caret.descending {
-  transform: translateX(-50%) rotate(180deg);
+.sort-caret::before {
+  border-bottom: 4px solid #c0c4cc;
+  margin-bottom: 2px;
+}
+
+.sort-caret::after {
+  border-top: 4px solid #c0c4cc;
+}
+
+.sort-caret.ascending::before {
+  border-bottom-color: #409eff;
+}
+
+.sort-caret.ascending::after {
+  border-top-color: #c0c4cc;
+}
+
+.sort-caret.descending::before {
+  border-bottom-color: #c0c4cc;
+}
+
+.sort-caret.descending::after {
+  border-top-color: #409eff;
 }
 
 .resource-manager .el-icon {
