@@ -2,7 +2,7 @@
 // 依赖与组件导入
 import {computed, nextTick, onMounted, onUnmounted, ref} from 'vue';
 import {ElMessage, ElMessageBox} from 'element-plus';
-import {ArrowLeft, Document, Folder, FolderOpened, Headset, MoreFilled, Picture, Refresh, VideoCamera} from '@element-plus/icons-vue';
+import {ArrowLeft, Document, Folder, FolderOpened, Headset, MoreFilled, Picture, Refresh, Search, VideoCamera} from '@element-plus/icons-vue';
 import {convertFileSrc, invoke} from '@tauri-apps/api/core';
 import {open} from '@tauri-apps/plugin-dialog';
 import {BaseDirectory, exists, mkdir, readTextFile, writeTextFile} from '@tauri-apps/plugin-fs';
@@ -498,27 +498,27 @@ const applySorting = (prop: string, order: string) => {
 <template>
   <div class="resource-manager">
     <div class="toolbar">
-      <el-button @click="goBack" :disabled="!canGoBack()" type="info" class="back-button">
-        <el-icon>
-          <arrow-left/>
-        </el-icon>
-      </el-button>
-      <el-tooltip content="刷新当前目录" placement="top">
-        <el-button @click="openFolder(currentPath, false, false)" :disabled="!currentPath" class="toolbar-icon-btn"><el-icon><Refresh /></el-icon></el-button>
-      </el-tooltip>
-      <el-input v-model="currentPath" placeholder="当前路径" readonly class="path-input" />
-      <el-tooltip content="选择文件夹" placement="top">
-        <el-button @click="selectFolder" class="toolbar-icon-btn"><el-icon><FolderOpened /></el-icon></el-button>
-      </el-tooltip>
-      <el-input
-        v-model="searchKeyword"
-        placeholder="搜索当前目录"
-        clearable
-        class="search-input"
-      />
-      <el-button type="primary" @click="openClassifierWindow" class="classifier-button" v-if="false">
-        打开分类窗口
-      </el-button>
+      <div class="nav-group">
+        <el-tooltip content="返回上一级" placement="top">
+          <button @click="goBack" :disabled="!canGoBack()" class="nav-native-btn nav-btn-left">
+            <el-icon><arrow-left/></el-icon>
+          </button>
+        </el-tooltip>
+        <el-tooltip content="刷新" placement="top">
+          <button @click="openFolder(currentPath, false, false)" :disabled="!currentPath" class="nav-native-btn nav-btn-right">
+            <el-icon><Refresh /></el-icon>
+          </button>
+        </el-tooltip>
+      </div>
+      <div class="path-group">
+        <el-input v-model="currentPath" placeholder="当前路径" readonly class="path-input" />
+        <el-tooltip content="选择文件夹" placement="top">
+          <el-button @click="selectFolder" class="toolbar-icon-btn path-open-btn"><el-icon><FolderOpened /></el-icon></el-button>
+        </el-tooltip>
+      </div>
+      <el-input v-model="searchKeyword" placeholder="搜索" clearable class="search-input">
+        <template #prefix><el-icon style="color:#c0c4cc"><Search /></el-icon></template>
+      </el-input>
     </div>
 
     <div class="custom-table-container" :style="{ height: scrollbarHeight }" ref="scrollRef">
@@ -808,29 +808,72 @@ const applySorting = (prop: string, order: string) => {
 
 .toolbar {
   display: flex;
-  gap: 10px;
+  gap: 6px;
   align-items: center;
   flex-shrink: 0;
+  padding: 4px 0;
+}
+
+.nav-group {
+  display: flex;
+  gap: 0;
+  flex-shrink: 0;
+}
+
+.nav-native-btn {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #fff;
+  border: 1px solid #dcdfe6;
+  cursor: pointer;
+  transition: background-color 0.1s;
+  flex-shrink: 0;
+}
+
+.nav-native-btn:hover {
+  background-color: #f5f7fa;
+}
+
+.nav-native-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.nav-btn-left {
+  border-radius: 4px 0 0 4px;
+  border-right: none;
+}
+
+.nav-btn-right {
+  border-radius: 0 4px 4px 0;
+}
+
+.path-group {
+  flex: 1;
+  display: flex;
+  gap: 0;
 }
 
 .path-input {
   flex: 1;
 }
 
+:deep(.path-group .path-input .el-input__wrapper) {
+  border-radius: 4px 0 0 4px;
+}
+
+.path-open-btn {
+  border-radius: 0 4px 4px 0 !important;
+  border-left: none !important;
+}
+
 .search-input {
-  width: 260px;
-}
-
-.back-button {
-  min-width: 40px;
-  background-color: #fff;
-  border: 1px solid #dcdfe6;
-  border-radius: 4px;
-}
-
-.back-button:hover {
-  background-color: #f5f7fa;
-  border: 1px solid #dcdfe6;
+  width: 200px;
+  flex-shrink: 0;
 }
 
 .toolbar-icon-btn {
