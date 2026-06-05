@@ -21,6 +21,9 @@ interface FileItem {
   path: string;
 }
 
+// 隐藏文件
+const HIDDEN_PATHS = ['C:\\$RECYCLE.BIN'];
+
 // 媒体文件扩展名集合
 const videoExtensions = ['.mp4', '.webm', '.ogg', '.mov', '.avi'];
 const audioExtensions = ['.mp3', '.wav', '.aac', '.flac', '.m4a'];
@@ -189,11 +192,9 @@ const formatFileSize = (size: number) => {
 
 const filteredFileList = computed(() => {
   const keyword = searchKeyword.value.trim().toLowerCase();
-  if (!keyword) {
-    return fileList.value;
-  }
   return fileList.value.filter((item) =>
-    item.name.toLowerCase().includes(keyword)
+    !HIDDEN_PATHS.includes(item.path) &&
+    (!keyword || item.name.toLowerCase().includes(keyword))
   );
 });
 
@@ -470,19 +471,6 @@ onUnmounted(() => {
   window.removeEventListener('resize', handleResize);
 });
 
-const createRipple = (event: MouseEvent) => {
-  const row = event.currentTarget as HTMLElement;
-  const rect = row.getBoundingClientRect();
-  const ripple = document.createElement('span');
-  ripple.className = 'ripple-effect';
-  ripple.style.left = `${event.clientX - rect.left}px`;
-  row.appendChild(ripple);
-  ripple.animate(
-    [{ transform: 'scaleX(0)', opacity: '1' }, { transform: `scaleX(${rect.width})`, opacity: '0' }],
-    { duration: 450, easing: 'ease-out', fill: 'forwards' }
-  ).onfinish = () => ripple.remove();
-};
-
 // 应用排序：文件夹优先，其次按列与排序方向
 const applySorting = (prop: string, order: string) => {
   const sortedList = [...fileList.value];
@@ -558,7 +546,7 @@ const applySorting = (prop: string, order: string) => {
         </div>
       </div>
       <div class="custom-table-body">
-        <div v-for="row in filteredFileList" :key="row.path" class="custom-table-row" @dblclick="handleRowClick(row)" @click="createRipple($event)" draggable="true" @dragstart="handleDragStart(row, $event)">
+        <div v-for="row in filteredFileList" :key="row.path" class="custom-table-row" @dblclick="handleRowClick(row)" draggable="true" @dragstart="handleDragStart(row, $event)">
           <div class="body-cell type-cell">
             <el-icon>
               <component :is="getFileIcon(row)"/>
@@ -644,10 +632,8 @@ const applySorting = (prop: string, order: string) => {
 
 .custom-table-row {
   border-bottom: 1px solid rgba(0, 0, 0, 0.04);
-  transition: background-color 0.15s ease, transform 0.1s ease;
+  transition: background-color 0.15s ease;
   cursor: default;
-  position: relative;
-  overflow: hidden;
 }
 
 .custom-table-row:hover {
@@ -985,14 +971,4 @@ const applySorting = (prop: string, order: string) => {
   text-overflow: ellipsis;
 }
 
-.ripple-effect {
-  position: absolute;
-  top: 0;
-  width: 1px;
-  height: 100%;
-  background: rgba(100, 180, 255, 0.3);
-  transform: scaleX(0);
-  transform-origin: center;
-  pointer-events: none;
-}
 </style>
