@@ -178,6 +178,7 @@ const previewImage = async (path: string) => {
 
 // 文件大小格式化显示
 const formatFileSize = (size: number) => {
+  if (!size || isNaN(size)) return '0 B';
   const units = ['B', 'KB', 'MB', 'GB', 'TB'];
   const exponent = Math.min(Math.floor(Math.log(size) / Math.log(1024)), units.length - 1);
   const formattedSize = (size / Math.pow(1024, exponent)).toFixed(2);
@@ -551,8 +552,8 @@ const applySorting = (prop: string, order: string) => {
             </el-icon>
           </div>
           <div class="body-cell name-cell">{{ row.name }}</div>
-          <div class="body-cell size-cell">{{ row.is_dir ? '-' : formatFileSize(row.size) }}</div>
-          <div class="body-cell modified-cell">{{ row.modified_time }}</div>
+          <div class="body-cell size-cell muted-cell">{{ row.is_dir ? '-' : formatFileSize(row.size) }}</div>
+          <div class="body-cell modified-cell muted-cell">{{ row.modified_time }}</div>
           <div class="body-cell action-cell">
             <span class="more-button" @click.stop="openActionMenu($event, row)">
               <el-icon class="more-icon">
@@ -667,8 +668,13 @@ const applySorting = (prop: string, order: string) => {
 }
 
 .body-cell {
-  color: #1a1a2e;
+  color: #1e293b;
   text-align: left;
+}
+
+.muted-cell {
+  color: #94a3b8;
+  font-size: 12px;
 }
 
 .header-cell {
