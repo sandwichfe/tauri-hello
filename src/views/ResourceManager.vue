@@ -233,7 +233,7 @@ const updateImageFilesMap = (files: FileItem[]) => {
 };
 
 // 打开指定文件夹并维护历史
-const openFolder = async (nextPath: string, pushHistory = true) => {
+const openFolder = async (nextPath: string, pushHistory = true, clearSearch = true) => {
   try {
     if (pushHistory && currentPath.value && currentPath.value !== nextPath) {
       rememberCurrentScroll();
@@ -245,7 +245,7 @@ const openFolder = async (nextPath: string, pushHistory = true) => {
     updateImageFilesMap(files);
     currentPath.value = nextPath;
 
-    searchKeyword.value = '';
+    if (clearSearch) searchKeyword.value = '';
 
     if (sortColumn.value && sortOrder.value) {
       applySorting(sortColumn.value, sortOrder.value);
@@ -296,9 +296,10 @@ const handleRowClick = (row: FileItem) => {
 };
 
 const openActionMenu = (event: MouseEvent, row: FileItem) => {
-  const {clientX, clientY} = event;
+  const menuWidth = 120;
+  const x = event.clientX + menuWidth > window.innerWidth ? event.clientX - menuWidth : event.clientX;
   actionRow.value = row;
-  actionMenuPosition.value = {x: clientX, y: clientY};
+  actionMenuPosition.value = {x, y: event.clientY};
   actionMenuVisible.value = true;
 };
 
@@ -347,7 +348,7 @@ const handleMoveToRecycleBin = async (row: FileItem) => {
     await invoke('move_to_recycle_bin', {path: row.path});
     ElMessage.success('已移动到回收站');
     if (currentPath.value) {
-      await openFolder(currentPath.value, false);
+      await openFolder(currentPath.value, false, false);
     }
   } catch (error) {
     ElMessage.error('移动到回收站失败');
