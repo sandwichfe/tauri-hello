@@ -2,7 +2,7 @@
 // 依赖与组件导入
 import {computed, nextTick, onMounted, onUnmounted, ref} from 'vue';
 import {ElMessage, ElMessageBox} from 'element-plus';
-import {ArrowLeft, Document, Folder, Headset, MoreFilled, Picture, VideoCamera} from '@element-plus/icons-vue';
+import {ArrowLeft, Document, Folder, FolderOpened, Headset, MoreFilled, Picture, Refresh, VideoCamera} from '@element-plus/icons-vue';
 import {convertFileSrc, invoke} from '@tauri-apps/api/core';
 import {open} from '@tauri-apps/plugin-dialog';
 import {BaseDirectory, exists, mkdir, readTextFile, writeTextFile} from '@tauri-apps/plugin-fs';
@@ -503,11 +503,13 @@ const applySorting = (prop: string, order: string) => {
           <arrow-left/>
         </el-icon>
       </el-button>
-      <el-input v-model="currentPath" placeholder="当前路径" readonly class="path-input">
-        <template #append>
-          <el-button @click="selectFolder">选择文件夹</el-button>
-        </template>
-      </el-input>
+      <el-tooltip content="刷新当前目录" placement="top">
+        <el-button @click="openFolder(currentPath, false, false)" :disabled="!currentPath" class="toolbar-icon-btn"><el-icon><Refresh /></el-icon></el-button>
+      </el-tooltip>
+      <el-input v-model="currentPath" placeholder="当前路径" readonly class="path-input" />
+      <el-tooltip content="选择文件夹" placement="top">
+        <el-button @click="selectFolder" class="toolbar-icon-btn"><el-icon><FolderOpened /></el-icon></el-button>
+      </el-tooltip>
       <el-input
         v-model="searchKeyword"
         placeholder="搜索当前目录"
@@ -829,6 +831,16 @@ const applySorting = (prop: string, order: string) => {
 .back-button:hover {
   background-color: #f5f7fa;
   border: 1px solid #dcdfe6;
+}
+
+.toolbar-icon-btn {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
 
 .file-count {
