@@ -616,9 +616,11 @@ const applySorting = (prop: string, order: string) => {
 <style scoped>
 .custom-table-container {
   overflow-y: auto;
-  border: 1px solid #ebeef5;
-  border-radius: 4px;
+  border: 1px solid rgba(0, 0, 0, 0.07);
+  border-radius: 8px;
   margin-top: 10px;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
 }
 
 .custom-table-header, .custom-table-row {
@@ -626,41 +628,59 @@ const applySorting = (prop: string, order: string) => {
   align-items: center;
 }
 
+.custom-table-row {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+  transition: background-color 0.15s ease, transform 0.1s ease;
+  cursor: default;
+}
+
 .custom-table-row:hover {
-  background-color: #f5f7fa;
+  background-color: rgba(64, 158, 255, 0.04);
+}
+
+.custom-table-row:hover .more-button {
+  opacity: 1;
 }
 
 .custom-table-row:last-child {
   border-bottom: none;
 }
 
+.custom-table-row:active {
+  transform: scaleX(0.998);
+}
+
 .custom-table-header {
   position: sticky;
   top: 0;
-  background-color: #fff;
+  background-color: #fafafa;
   z-index: 1;
-  border-bottom: 1px solid #ebeef5;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.07);
 }
 
 .header-cell, .body-cell {
-  padding: 12px 10px;
+  padding: 9px 10px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .body-cell {
-  color: #303133;
+  color: #1a1a2e;
   text-align: left;
 }
 
 .header-cell {
-  font-weight: normal;
-  color: #606266;
+  font-weight: 500;
+  color: #8b8fa8;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   position: relative;
   display: inline-flex;
   align-items: center;
+  user-select: none;
 }
 
 .type-cell {
@@ -680,33 +700,39 @@ const applySorting = (prop: string, order: string) => {
 }
 
 .action-cell {
-  width: 120px;
+  width: 80px;
   text-align: right;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 12px;
 }
 
 .more-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 14px;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
   cursor: pointer;
-  transition: background-color 0.15s ease, transform 0.1s ease;
+  opacity: 0;
+  transition: background-color 0.15s ease, opacity 0.15s ease, transform 0.1s ease;
 }
 
 .more-button:hover {
-  background-color: rgba(0, 0, 0, 0.04);
+  background-color: rgba(0, 0, 0, 0.07);
+  opacity: 1;
 }
 
 .more-button:active {
-  background-color: rgba(0, 0, 0, 0.08);
-  transform: scale(0.95);
+  background-color: rgba(0, 0, 0, 0.12);
+  transform: scale(0.92);
 }
 
 .more-icon {
-  font-size: 18px;
-  color: #909399;
+  font-size: 16px;
+  color: #606266;
 }
 
 .dropdown-clickable {
@@ -730,24 +756,41 @@ const applySorting = (prop: string, order: string) => {
 
 .action-menu {
   position: fixed;
-  min-width: 120px;
-  background-color: #fff;
-  border: 1px solid #ebeef5;
-  border-radius: 4px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  min-width: 130px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+  animation: menu-in 0.12s ease;
+}
+
+@keyframes menu-in {
+  from { opacity: 0; transform: scale(0.95) translateY(-4px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
 }
 
 .action-menu-item {
-  padding: 8px 16px;
+  padding: 8px 14px;
   cursor: pointer;
+  font-size: 13px;
+  color: #1a1a2e;
+  transition: background-color 0.1s ease;
 }
 
 .action-menu-item:hover {
-  background-color: #f5f7fa;
+  background-color: rgba(64, 158, 255, 0.08);
+  color: #409eff;
 }
 
 .sortable {
   cursor: pointer;
+}
+
+.sortable:hover {
+  color: #606266;
 }
 
 .sort-caret {
@@ -758,6 +801,7 @@ const applySorting = (prop: string, order: string) => {
   justify-content: center;
   width: 12px;
   height: 14px;
+  transition: opacity 0.15s;
 }
 
 .sort-caret::before,
@@ -765,17 +809,17 @@ const applySorting = (prop: string, order: string) => {
   content: '';
   width: 0;
   height: 0;
-  border-left: 4px solid transparent;
-  border-right: 4px solid transparent;
+  border-left: 3.5px solid transparent;
+  border-right: 3.5px solid transparent;
 }
 
 .sort-caret::before {
-  border-bottom: 4px solid #c0c4cc;
+  border-bottom: 3.5px solid #c0c4cc;
   margin-bottom: 2px;
 }
 
 .sort-caret::after {
-  border-top: 4px solid #c0c4cc;
+  border-top: 3.5px solid #c0c4cc;
 }
 
 .sort-caret.ascending::before {
