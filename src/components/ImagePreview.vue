@@ -1,9 +1,7 @@
 <script setup lang="ts">
-import { ElImageViewer  } from 'element-plus';
-import {  ref } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 
-// @ts-ignore-next-line
-defineProps<{
+const props = defineProps<{
   visible: boolean;
   imageUrls: string[];
   initialIndex: number;
@@ -13,71 +11,105 @@ const emit = defineEmits<{
   'update:visible': [value: boolean];
 }>();
 
+const currentIndex = ref(props.initialIndex);
+let previousBodyOverflow = '';
+let previousHtmlOverflow = '';
+let isScrollLocked = false;
+
+const hasImages = computed(() => props.imageUrls.length > 0);
+
+const safeInitialIndex = computed(() => {
+  if (!hasImages.value) return 0;
+  return Math.min(Math.max(props.initialIndex, 0), props.imageUrls.length - 1);
+});
+
+const counterText = computed(() => {
+  if (!hasImages.value) return '';
+  return `${currentIndex.value + 1} / ${props.imageUrls.length}`;
+});
+
+const lockPageScroll = () => {
+  if (isScrollLocked) return;
+  previousBodyOverflow = document.body.style.overflow;
+  previousHtmlOverflow = document.documentElement.style.overflow;
+  document.body.style.overflow = 'hidden';
+  document.documentElement.style.overflow = 'hidden';
+  isScrollLocked = true;
+};
+
+const unlockPageScroll = () => {
+  if (!isScrollLocked) return;
+  document.body.style.overflow = previousBodyOverflow;
+  document.documentElement.style.overflow = previousHtmlOverflow;
+  isScrollLocked = false;
+};
 
 const handleClose = () => {
   emit('update:visible', false);
 };
 
-const scrollContainer = ref(null);
-
-// 解决当图片预览 超出窗口 会触发父级滚动条的问题
-const handleWheel = (e: WheelEvent) => {
-  const container = scrollContainer.value;
-  if (!container) return; // 确保容器存在
-
-  const { scrollTop, scrollHeight, clientHeight } = container;
-  const isScrollingDown = e.deltaY > 0;
-  const isScrollingUp = e.deltaY < 0;
-
-  // 检查是否到达边界
-  const atTop = scrollTop <= 0 && isScrollingUp;
-  const atBottom = scrollTop + clientHeight >= scrollHeight && isScrollingDown;
-
-  // 阻止默认行为（禁止父级滚动）
-  if (atTop || atBottom) {
-    e.preventDefault();
-  }
+const handleSwitch = (index: number) => {
+  currentIndex.value = index;
 };
 
+watch(
+  () => props.visible && hasImages.value,
+  (shouldShowViewer) => {
+    if (shouldShowViewer) {
+      currentIndex.value = safeInitialIndex.value;
+      lockPageScroll();
+      return;
+    }
 
+    unlockPageScroll();
+  },
+  { immediate: true }
+);
 
+watch(safeInitialIndex, (index) => {
+  if (props.visible) {
+    currentIndex.value = index;
+  }
+});
+
+onBeforeUnmount(() => {
+  unlockPageScroll();
+});
 </script>
 
 <template>
-  <!-- <el-dialog :model-value="visible" @update:model-value="emit('update:visible', $event)" width="80%" height="80%"
-    @close="handleClose" destroy-on-close :show-close="false"> -->
-
-  <!-- <el-image
-      :src="imageUrl"
-      :preview-src-list="[imageUrl]"
-      :preview-teleported="true"
-      fit="contain"
-      @error="handleImageError"
-      @load="handleImageLoaded"
-      @close="handleClose"
-      show-progress
+  <div v-if="visible && hasImages" class="image-preview-viewer">
+    <el-image-viewer
+      :url-list="imageUrls"
+      :initial-index="safeInitialIndex"
       hide-on-click-modal
+      @close="handleClose"
+      @switch="handleSwitch"
     >
-    </el-image> -->
-  <!-- </el-dialog> -->
-
-  <div 
-    ref="scrollContainer"
-    @wheel="handleWheel"
-    style="overflow: auto;"
-  >
-    <el-image-viewer v-if="visible" :url-list="imageUrls" :initial-index="initialIndex" hide-on-click-modal
-      @close="handleClose">
+      <div class="image-preview-counter">{{ counterText }}</div>
     </el-image-viewer>
   </div>
-
-
 </template>
 
 <style scoped>
-.image-preview {
-  width: 100%;
-  object-fit: contain;
+.image-preview-viewer {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
 }
 
+.image-preview-counter {
+  position: fixed;
+  top: 24px;
+  left: 50%;
+  z-index: 2001;
+  padding: 6px 12px;
+  border-radius: 4px;
+  color: #fff;
+  font-size: 14px;
+  line-height: 1;
+  background: rgb(0 0 0 / 48%);
+  transform: translateX(-50%);
+  pointer-events: none;
+}
 </style>
