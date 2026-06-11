@@ -1,84 +1,107 @@
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
+import { onMounted, ref } from "vue";
 import { invoke } from "@tauri-apps/api/core";
-import { ElMessage, ElButton } from 'element-plus';
-import { EditPen,QuestionFilled } from '@element-plus/icons-vue'
+import { ElMessage } from "element-plus";
+import { EditPen, QuestionFilled } from "@element-plus/icons-vue";
 import { openLoading, closeLoading } from "../../src/utils/loadingUtil";
-import { readTextFile, writeTextFile, BaseDirectory, mkdir, exists } from '@tauri-apps/plugin-fs'
+import { readTextFile, writeTextFile, BaseDirectory, mkdir, exists } from "@tauri-apps/plugin-fs";
 
-const proxy_ip = ref("http://127.0.0.1:7897");
-const configPath = ref("");
+const DEFAULT_PROXY_URL = "http://127.0.0.1:7897";
+const CONFIG_PATH = "proxyConfig.json";
+
+const labels = {
+  useDefaultProxyConfig: "首次运行或配置文件不存在，使用默认代理地址。",
+  unsetProxy: "未设置代理",
+  unset: "未设置",
+  getProxyInfoFailed: "获取 Git 代理信息失败",
+  checkProxyStatusFailed: "检查代理状态失败",
+  proxyClosed: "代理已关闭",
+  proxyOpened: "代理已开启",
+  proxyOperationFailed: "代理操作失败",
+  proxyAddressUpdated: "代理地址已更新为",
+  saveProxyConfigFailed: "保存代理配置失败",
+  gitProxyAddress: "Git 代理地址",
+  viewCurrentGitProxy: "查看当前 Git 代理",
+  editProxyConfig: "修改代理配置",
+  enabled: "已开启",
+  disabled: "已关闭",
+  editProxyAddress: "修改代理地址",
+  enterProxyAddress: "请输入代理地址",
+  cancel: "取消",
+  confirm: "确认"
+} as const;
+
+const proxyIp = ref(DEFAULT_PROXY_URL);
 const proxyEnabled = ref(false);
 const proxyButtonStatus = ref(false);
-
+const dialogVisible = ref(false);
+const tempProxyUrl = ref("");
 
 onMounted(async () => {
   try {
-    configPath.value = 'proxyConfig.json';
-    const config = await readTextFile(configPath.value, {
+    const config = await readTextFile(CONFIG_PATH, {
       baseDir: BaseDirectory.AppConfig
     });
-    
+
     const { config: savedConfig } = JSON.parse(config);
-    proxy_ip.value = savedConfig?.proxy_ip || "http://127.0.0.1:7897";
-    
-    // 检查代理是否已启用
-    await checkProxyStatus();
+    proxyIp.value = savedConfig?.proxy_ip || DEFAULT_PROXY_URL;
   } catch (error) {
-    console.log('首次运行或配置文件不存在，使用默认值');
+    console.log(labels.useDefaultProxyConfig);
+  } finally {
+    await checkProxyStatus();
   }
 });
 
 async function getGitProxyInfo() {
   openLoading();
   try {
-    const result_http: string = await invoke('my_custom_command', { command: "git config --global --get http.proxy" });
-    const result_https: string = await invoke('my_custom_command', { command: "git config --global --get https.proxy" });
-    console.info("result_http: " + result_http);
-    if (!result_http.trim() && !result_https.trim()) {
-      ElMessage.success("未设置代理");
-    } else {
-      ElMessage.success({
-        message: result_http + "<br>" + result_https,
-        dangerouslyUseHTMLString: true
-      });
+    const resultHttp: string = await invoke("my_custom_command", { command: "git config --global --get http.proxy" });
+    const resultHttps: string = await invoke("my_custom_command", { command: "git config --global --get https.proxy" });
+
+    if (!resultHttp.trim() && !resultHttps.trim()) {
+      ElMessage.success(labels.unsetProxy);
+      return;
     }
+
+    ElMessage.success(`HTTP: ${resultHttp || labels.unset}，HTTPS: ${resultHttps || labels.unset}`);
   } catch (error) {
-    console.error(error);
+    console.error(`${labels.getProxyInfoFailed}:`, error);
+    ElMessage.error(labels.getProxyInfoFailed);
+  } finally {
+    closeLoading();
   }
-  closeLoading();
 }
 
-// 检查代理状态
 async function checkProxyStatus() {
   try {
-    const result_http: string = await invoke('my_custom_command', { command: "git config --global --get http.proxy" });
-    const result_https: string = await invoke('my_custom_command', { command: "git config --global --get https.proxy" });
-    proxyEnabled.value = !!(result_http.trim() || result_https.trim());
+    const resultHttp: string = await invoke("my_custom_command", { command: "git config --global --get http.proxy" });
+    const resultHttps: string = await invoke("my_custom_command", { command: "git config --global --get https.proxy" });
+    proxyEnabled.value = !!(resultHttp.trim() || resultHttps.trim());
     proxyButtonStatus.value = proxyEnabled.value;
   } catch (error) {
-    console.error("检查代理状态失败:", error);
+    console.error(`${labels.checkProxyStatusFailed}:`, error);
     proxyEnabled.value = false;
+    proxyButtonStatus.value = false;
   }
 }
 
 async function setGitProxy() {
-  const proxyUrl = proxy_ip.value;
-  await invoke('my_custom_command', { command: `git config --global http.proxy ${proxyUrl}` });
-  await invoke('my_custom_command', { command: `git config --global https.proxy ${proxyUrl}` });
+  const proxyUrl = proxyIp.value;
+  await invoke("my_custom_command", { command: `git config --global http.proxy ${proxyUrl}` });
+  await invoke("my_custom_command", { command: `git config --global https.proxy ${proxyUrl}` });
 }
 
 async function disableProxy() {
-  await invoke('my_custom_command', { command: "git config --global --unset http.proxy" });
-  await invoke('my_custom_command', { command: "git config --global --unset https.proxy" });
-  ElMessage.success("代理已关闭");
+  await invoke("my_custom_command", { command: "git config --global --unset http.proxy" });
+  await invoke("my_custom_command", { command: "git config --global --unset https.proxy" });
+  ElMessage.success(labels.proxyClosed);
   proxyEnabled.value = false;
 }
 
 async function enableProxy() {
   await setGitProxy();
   proxyEnabled.value = true;
-  ElMessage.success("代理已开启");
+  ElMessage.success(labels.proxyOpened);
 }
 
 async function toggleProxy() {
@@ -90,55 +113,50 @@ async function toggleProxy() {
       await enableProxy();
     }
   } catch (error) {
-    console.error("代理操作失败:", error);
-    ElMessage.error("代理操作失败");
+    console.error(`${labels.proxyOperationFailed}:`, error);
+    ElMessage.error(labels.proxyOperationFailed);
     proxyButtonStatus.value = proxyEnabled.value;
+  } finally {
+    closeLoading();
   }
-  closeLoading();
 }
 
-const dialogVisible = ref(false);
-const tempProxyUrl = ref("");
-
 async function openSetProxyDialog() {
-  tempProxyUrl.value = proxy_ip.value;
+  tempProxyUrl.value = proxyIp.value;
   dialogVisible.value = true;
 }
 
 async function confirmProxyChange() {
   if (tempProxyUrl.value) {
-    proxy_ip.value = tempProxyUrl.value;
+    proxyIp.value = tempProxyUrl.value;
     try {
-      // 确保目录存在
-      const dirExists = await exists('', { baseDir: BaseDirectory.AppConfig });
+      const dirExists = await exists("", { baseDir: BaseDirectory.AppConfig });
       if (!dirExists) {
-        await mkdir('', {
+        await mkdir("", {
           recursive: true,
           baseDir: BaseDirectory.AppConfig
         });
       }
-      // 写入配置文件
-      await writeTextFile(configPath.value, JSON.stringify({ config: { proxy_ip: proxy_ip.value } }), {
+
+      await writeTextFile(CONFIG_PATH, JSON.stringify({ config: { proxy_ip: proxyIp.value } }), {
         baseDir: BaseDirectory.AppConfig,
         create: true
       });
-      ElMessage.success(`代理地址已更新为: ${proxy_ip.value}`);
+      ElMessage.success(`${labels.proxyAddressUpdated}: ${proxyIp.value}`);
 
-      // 如果代理正在启用，更新下代理地址
       if (proxyEnabled.value) {
         await setGitProxy();
       }
-      
     } catch (error) {
-      console.error('保存代理配置失败:', error);
-      ElMessage.error(`保存代理配置失败: ${error instanceof Error ? error.message : String(error)}`);
+      console.error(`${labels.saveProxyConfigFailed}:`, error);
+      ElMessage.error(`${labels.saveProxyConfigFailed}: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
   dialogVisible.value = false;
 }
 
 defineExpose({
-  proxy_ip,
+  proxyIp,
   proxyEnabled,
   toggleProxy,
   openSetProxyDialog
@@ -147,34 +165,49 @@ defineExpose({
 
 <template>
   <div class="proxy-manager-container">
-
-
     <div class="current-proxy">
-
-      <div style="position: relative; padding-right: 18px;">git代理地址: {{ proxy_ip }}
-        <el-icon @click="getGitProxyInfo" class="view-btn" style="position: absolute; top: 0; right: 0;"><QuestionFilled /></el-icon>
+      <div class="proxy-info">
+        <span class="proxy-label">{{ labels.gitProxyAddress }}</span>
+        <span class="proxy-url" :title="proxyIp">{{ proxyIp }}</span>
+        <el-tooltip :content="labels.viewCurrentGitProxy" placement="top">
+          <el-button
+            class="icon-action"
+            :icon="QuestionFilled"
+            circle
+            text
+            :aria-label="labels.viewCurrentGitProxy"
+            @click="getGitProxyInfo"
+          />
+        </el-tooltip>
       </div>
 
-      <el-tooltip content="修改代理配置" placement="top">
-        <el-button type="warning" @click="openSetProxyDialog" :icon="EditPen" circle class="setting-proxy-btn" />
-      </el-tooltip>
+      <div class="proxy-actions">
+        <el-tooltip :content="labels.editProxyConfig" placement="top">
+          <el-button
+            class="icon-action"
+            :icon="EditPen"
+            circle
+            :aria-label="labels.editProxyConfig"
+            @click="openSetProxyDialog"
+          />
+        </el-tooltip>
 
-      <el-switch v-model="proxyButtonStatus" @change="toggleProxy" class="proxy-switch-btn" />
-
+        <el-switch
+          v-model="proxyButtonStatus"
+          @change="toggleProxy"
+        />
+      </div>
     </div>
 
-    <el-dialog v-model="dialogVisible" title="修改代理地址" width="30%">
-      <el-input v-model="tempProxyUrl" placeholder="请输入代理地址" />
+    <el-dialog v-model="dialogVisible" :title="labels.editProxyAddress" width="min(480px, 92vw)">
+      <el-input v-model="tempProxyUrl" :placeholder="labels.enterProxyAddress" />
       <template #footer>
         <span class="dialog-footer">
-          <el-button @click="dialogVisible = false">取消</el-button>
-          <el-button type="primary" @click="confirmProxyChange">
-            确认
-          </el-button>
+          <el-button @click="dialogVisible = false">{{ labels.cancel }}</el-button>
+          <el-button type="primary" @click="confirmProxyChange">{{ labels.confirm }}</el-button>
         </span>
       </template>
     </el-dialog>
-
   </div>
 </template>
 
@@ -183,54 +216,58 @@ defineExpose({
   height: 100%;
 }
 
-
-h2 {
-  color: #303133;
-  margin-bottom: 16px;
-  font-size: 24px;
-  font-weight: 600;
-}
-
 .current-proxy {
-  background-color: #f7f7f7;;
-  color: #409eff;
-  padding: 12px 16px; /* 增加内边距 */
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 12px 16px;
   border-radius: 8px;
+  background-color: #f7f7f7;
+  color: #303133;
   font-size: 14px;
-  display: flex;          /* 新增：启用flex布局 */
-  align-items: center;    /* 垂直居中 */
-  gap: 12px;              /* 元素间距 */
-  position: relative;     /* 为悬浮按钮定位 */
 }
 
-.proxy-status {
-  margin-top: 0; /* 取消原来的上边距 */
+.proxy-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
 }
 
-/* 新增：设置代理按钮样式 */
-.setting-proxy-btn {
-  transition: all 0.3s;
-  background-color: #b7b7b7;
-  border: none;
+.proxy-label {
+  flex: none;
+  color: #606266;
 }
 
-.proxy-switch-btn {
-margin-right: 2px;
-margin-left: auto;
-}
-
-.view-btn {
-  cursor: pointer;
+.proxy-url {
+  min-width: 0;
+  overflow: hidden;
   color: #409eff;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.toggle-button {
-  height: 32px;
-  font-size: 14px;
-  font-weight: 500;
-  border-radius: 8px;
-  transition: all 0.3s;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+.proxy-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: none;
 }
 
+.icon-action {
+  flex: none;
+}
+
+@media (max-width: 520px) {
+  .current-proxy {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .proxy-actions {
+    justify-content: space-between;
+  }
+}
 </style>
