@@ -50,6 +50,7 @@ const showVideoPreview = ref(false);
 const currentVideoUrl = ref('');
 const showImagePreview = ref(false);
 const currentImageUrl = ref<string[]>([]);
+const currentImageNames = ref<string[]>([]);
 const currentIndex = ref(0);
 
 const showFileDetail = ref(false);
@@ -159,9 +160,9 @@ const previewVideo = async (path: string) => {
 const previewImage = async (path: string) => {
   try {
     openLoading();
-    currentImageUrl.value = await Promise.all(
-        Array.from(imageFiles.value).map(async ([p]) => await getAssetUrl(p))
-    );
+    const imagePaths = Array.from(imageFiles.value.keys());
+    currentImageUrl.value = await Promise.all(imagePaths.map(async (p) => await getAssetUrl(p)));
+    currentImageNames.value = imagePaths.map((p) => p.split(/[\\/]/).pop() || p);
     currentIndex.value = imageFiles.value.get(path) || 0;
     showImagePreview.value = true;
     closeLoading();
@@ -614,7 +615,12 @@ const applySorting = (prop: string, order: string) => {
     </div>
 
     <VideoPreview v-model:visible="showVideoPreview" :video-url="currentVideoUrl"/>
-    <ImagePreview v-model:visible="showImagePreview" :image-urls="currentImageUrl" :initial-index="currentIndex"/>
+    <ImagePreview
+      v-model:visible="showImagePreview"
+      :image-urls="currentImageUrl"
+      :image-names="currentImageNames"
+      :initial-index="currentIndex"
+    />
     <div
       v-if="actionMenuVisible"
       class="action-menu-overlay"

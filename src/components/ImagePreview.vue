@@ -4,6 +4,7 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue';
 const props = defineProps<{
   visible: boolean;
   imageUrls: string[];
+  imageNames?: string[];
   initialIndex: number;
 }>();
 
@@ -28,6 +29,33 @@ const counterText = computed(() => {
   return `${currentIndex.value + 1} / ${props.imageUrls.length}`;
 });
 
+const currentImageName = computed(() => {
+  if (!hasImages.value) return '';
+
+  const propName = props.imageNames?.[currentIndex.value]?.trim();
+  if (propName) return propName;
+
+  const currentUrl = props.imageUrls[currentIndex.value] ?? '';
+  const urlWithoutQuery = currentUrl.split(/[?#]/)[0] ?? '';
+  const normalizedUrl = safeDecodeURIComponent(urlWithoutQuery);
+  const name = normalizedUrl.split(/[\\/]/).pop() ?? '';
+
+  return name || '未知文件';
+});
+
+const safeDecodeURIComponent = (value: string) => {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+};
+
+const normalizeIndex = (index: number) => {
+  if (!hasImages.value) return 0;
+  return Math.min(Math.max(index, 0), props.imageUrls.length - 1);
+};
+
 const lockPageScroll = () => {
   if (isScrollLocked) return;
   previousBodyOverflow = document.body.style.overflow;
@@ -49,7 +77,7 @@ const handleClose = () => {
 };
 
 const handleSwitch = (index: number) => {
-  currentIndex.value = index;
+  currentIndex.value = normalizeIndex(index);
 };
 
 watch(
@@ -86,7 +114,10 @@ onBeforeUnmount(() => {
       @close="handleClose"
       @switch="handleSwitch"
     >
-      <div class="image-preview-counter">{{ counterText }}</div>
+      <div class="image-preview-info">
+        <div class="image-preview-counter">{{ counterText }}</div>
+        <div class="image-preview-name" :title="currentImageName">{{ currentImageName }}</div>
+      </div>
     </el-image-viewer>
   </div>
 </template>
@@ -98,18 +129,35 @@ onBeforeUnmount(() => {
   z-index: 2000;
 }
 
-.image-preview-counter {
+.image-preview-info {
   position: fixed;
   top: 24px;
   left: 50%;
   z-index: 2001;
+  display: flex;
+  max-width: min(520px, calc(100vw - 96px));
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
   padding: 6px 12px;
   border-radius: 4px;
   color: #fff;
-  font-size: 14px;
-  line-height: 1;
   background: rgb(0 0 0 / 48%);
   transform: translateX(-50%);
   pointer-events: none;
+}
+
+.image-preview-counter {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.image-preview-name {
+  overflow: hidden;
+  width: 100%;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  line-height: 1.2;
 }
 </style>
