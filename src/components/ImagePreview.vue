@@ -115,9 +115,9 @@ onBeforeUnmount(() => {
       @switch="handleSwitch"
     >
       <div class="image-preview-info">
-        <div class="image-preview-counter">{{ counterText }}</div>
         <div class="image-preview-name" :title="currentImageName">{{ currentImageName }}</div>
       </div>
+      <div class="image-preview-counter">{{ counterText }}</div>
     </el-image-viewer>
   </div>
 </template>
@@ -134,11 +134,7 @@ onBeforeUnmount(() => {
   top: 24px;
   left: 50%;
   z-index: 2001;
-  display: flex;
   max-width: min(520px, calc(100vw - 96px));
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
   padding: 6px 12px;
   border-radius: 4px;
   color: #fff;
@@ -148,6 +144,15 @@ onBeforeUnmount(() => {
 }
 
 .image-preview-counter {
+  position: fixed;
+  bottom: 24px;
+  left: 24px;
+  z-index: 2001;
+  padding: 6px 12px;
+  border-radius: 4px;
+  color: #fff;
+  background: rgb(0 0 0 / 48%);
+  pointer-events: none;
   font-size: 14px;
   line-height: 1;
 }
