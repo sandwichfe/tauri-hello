@@ -352,8 +352,8 @@ const handleActionDelete = () => {
 const handleActionOpenInExplorer = async () => {
   if (!actionRow.value) return;
   try {
-    await invoke('my_custom_command', {
-      command: `explorer /select,"${actionRow.value.path}"`
+    await invoke('show_in_file_manager', {
+      path: actionRow.value.path
     });
   } catch (error) {
     ElMessage.error('打开文件管理器失败');

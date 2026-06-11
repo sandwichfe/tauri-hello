@@ -20,6 +20,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             greet,
             my_custom_command,
+            show_in_file_manager,
             read_directory,
             move_to_recycle_bin,
             convert_video_ffmpeg
@@ -87,6 +88,22 @@ fn my_custom_command(command: String) -> String {
 
     // 返回命令的输出作为字符串
     String::from_utf8_lossy(&output.stdout).to_string()
+}
+
+#[tauri::command]
+fn show_in_file_manager(path: String) -> Result<(), String> {
+    if path.trim().is_empty() {
+        return Err("path is empty".to_string());
+    }
+
+    Command::new("explorer")
+        .creation_flags(0x08000000)
+        .arg("/select,")
+        .arg(path)
+        .spawn()
+        .map_err(|e| e.to_string())?;
+
+    Ok(())
 }
 
 #[tauri::command]
