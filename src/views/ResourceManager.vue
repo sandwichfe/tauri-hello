@@ -40,6 +40,9 @@ const configPath = ref('pathConfig.json');
 const sortColumn = ref('');
 const sortOrder = ref('');
 
+// 加载状态
+const isLoading = ref(false);
+
 const searchKeyword = ref('');
 
 // 预览相关状态
@@ -150,6 +153,23 @@ const getAssetUrl = async (path: string) => {
   }
 };
 
+// 生成面包屑路径数组
+const getBreadcrumbs = computed(() => {
+  if (!currentPath.value) return [];
+  const parts = currentPath.value.split(/[\\/]/).filter(Boolean);
+  return parts.map((part, index) => {
+    const path = parts.slice(0, index + 1).join('\\');
+    return { name: part, path: index === 0 ? part + '\\' : path };
+  });
+});
+
+// 面包屑点击导航
+const handleBreadcrumbClick = (path: string) => {
+  if (path !== currentPath.value) {
+    openFolder(path, true);
+  }
+};
+
 // 预览视频文件
 const previewVideo = async (path: string) => {
   try {
@@ -237,6 +257,7 @@ const updateImageFilesMap = (files: FileItem[]) => {
 // 打开指定文件夹并维护历史
 const openFolder = async (nextPath: string, pushHistory = true, clearSearch = true) => {
   try {
+    isLoading.value = true;
     if (pushHistory && currentPath.value && currentPath.value !== nextPath) {
       rememberCurrentScroll();
       pathHistory.value.push(currentPath.value);
@@ -267,6 +288,8 @@ const openFolder = async (nextPath: string, pushHistory = true, clearSearch = tr
   } catch (error) {
     ElMessage.error('读取文件夹失败');
     console.error(error);
+  } finally {
+    isLoading.value = false;
   }
 };
 
@@ -323,6 +346,30 @@ const handleActionDelete = () => {
     return;
   }
   handleMoveToRecycleBin(actionRow.value);
+  closeActionMenu();
+};
+
+const handleActionOpenInExplorer = async () => {
+  if (!actionRow.value) return;
+  try {
+    await invoke('my_custom_command', {
+      command: `explorer /select,"${actionRow.value.path}"`
+    });
+  } catch (error) {
+    ElMessage.error('打开文件管理器失败');
+    console.error(error);
+  }
+  closeActionMenu();
+};
+
+const handleActionCopyPath = async () => {
+  if (!actionRow.value) return;
+  try {
+    await navigator.clipboard.writeText(actionRow.value.path);
+    ElMessage.success('路径已复制');
+  } catch (error) {
+    ElMessage.error('复制失败');
+  }
   closeActionMenu();
 };
 
@@ -426,9 +473,10 @@ const handleSortChange = ({prop}: any) => {
     sortOrder.value = 'ascending';
   }
   applySorting(sortColumn.value, sortOrder.value);
+  savePathConfig();
 };
 
-// 保存路径配置到 AppConfig 目录
+// 保存路径配置到 AppConfig 目录（包含排序状态）
 const savePathConfig = async () => {
   try {
     const dirExists = await exists('', {baseDir: BaseDirectory.AppConfig});
@@ -437,7 +485,11 @@ const savePathConfig = async () => {
     }
     await writeTextFile(
         configPath.value,
-        JSON.stringify({currentPath: currentPath.value}),
+        JSON.stringify({
+          currentPath: currentPath.value,
+          sortColumn: sortColumn.value,
+          sortOrder: sortOrder.value
+        }),
         {baseDir: BaseDirectory.AppConfig, create: true}
     );
   } catch (error) {
@@ -445,22 +497,28 @@ const savePathConfig = async () => {
   }
 };
 
-// 载入路径配置并返回已保存路径
-const loadPathConfig = async (): Promise<string | null> => {
+// 载入路径配置并返回已保存路径与排序状态
+const loadPathConfig = async (): Promise<{currentPath: string | null, sortColumn: string, sortOrder: string}> => {
   try {
     const config = await readTextFile(configPath.value, {baseDir: BaseDirectory.AppConfig});
-    const {currentPath: savedPath} = JSON.parse(config);
-    return savedPath || null;
+    const {currentPath: savedPath, sortColumn: savedSortColumn, sortOrder: savedSortOrder} = JSON.parse(config);
+    return {
+      currentPath: savedPath || null,
+      sortColumn: savedSortColumn || '',
+      sortOrder: savedSortOrder || ''
+    };
   } catch {
-    return null;
+    return {currentPath: null, sortColumn: '', sortOrder: ''};
   }
 };
 
 // 组件挂载：加载配置与尺寸计算
 onMounted(async () => {
-  const saved = await loadPathConfig();
-  if (saved) {
-    await openFolder(saved, false);
+  const {currentPath: savedPath, sortColumn: savedSortColumn, sortOrder: savedSortOrder} = await loadPathConfig();
+  if (savedPath) {
+    sortColumn.value = savedSortColumn;
+    sortOrder.value = savedSortOrder;
+    await openFolder(savedPath, false);
   }
   await calculateScrollbarHeight();
   window.addEventListener('resize', handleResize);
@@ -513,7 +571,23 @@ const applySorting = (prop: string, order: string) => {
         </el-tooltip>
       </div>
       <div class="path-group">
-        <el-input v-model="currentPath" placeholder="当前路径" readonly class="path-input" />
+        <div v-if="currentPath && getBreadcrumbs.length > 0" class="breadcrumb-container">
+          <span
+            v-for="(crumb, index) in getBreadcrumbs"
+            :key="crumb.path"
+            class="breadcrumb-item"
+          >
+            <span
+              class="breadcrumb-text"
+              :class="{ 'clickable': index < getBreadcrumbs.length - 1 }"
+              @click="index < getBreadcrumbs.length - 1 && handleBreadcrumbClick(crumb.path)"
+            >
+              {{ crumb.name }}
+            </span>
+            <span v-if="index < getBreadcrumbs.length - 1" class="breadcrumb-separator">\</span>
+          </span>
+        </div>
+        <el-input v-else v-model="currentPath" placeholder="当前路径" readonly class="path-input" />
         <el-tooltip content="选择文件夹" placement="top">
           <el-button @click="selectFolder" class="toolbar-icon-btn path-open-btn"><el-icon><FolderOpened /></el-icon></el-button>
         </el-tooltip>
@@ -524,6 +598,10 @@ const applySorting = (prop: string, order: string) => {
     </div>
 
     <div class="custom-table-container" :style="{ height: scrollbarHeight }" ref="scrollRef">
+      <div v-if="isLoading" class="loading-overlay">
+        <el-icon class="loading-spinner"><Refresh /></el-icon>
+        <span>加载中...</span>
+      </div>
       <div class="custom-table-header">
         <div class="header-cell type-cell sortable" @click="handleSortChange({ prop: 'is_dir' })">
           类型
@@ -585,7 +663,13 @@ const applySorting = (prop: string, order: string) => {
         <div class="action-menu-item" @click="handleActionDetail">
           详情
         </div>
-        <div class="action-menu-item" @click="handleActionDelete">
+        <div class="action-menu-item" @click="handleActionCopyPath">
+          复制路径
+        </div>
+        <div class="action-menu-item" @click="handleActionOpenInExplorer">
+          在文件管理器中显示
+        </div>
+        <div class="action-menu-item action-menu-item-danger" @click="handleActionDelete">
           删除
         </div>
       </div>
@@ -616,7 +700,84 @@ const applySorting = (prop: string, order: string) => {
 </template>
 
 <style scoped>
+.loading-overlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: #606266;
+  z-index: 10;
+}
+
+.loading-spinner {
+  font-size: 32px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.breadcrumb-container {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  background: #fff;
+  border: 1px solid #dcdfe6;
+  border-radius: 4px 0 0 4px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  white-space: nowrap;
+  min-height: 32px;
+  box-sizing: border-box;
+}
+
+.breadcrumb-container::-webkit-scrollbar {
+  height: 4px;
+}
+
+.breadcrumb-container::-webkit-scrollbar-thumb {
+  background: #dcdfe6;
+  border-radius: 2px;
+}
+
+.breadcrumb-item {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.breadcrumb-text {
+  font-size: 13px;
+  color: #606266;
+  padding: 2px 4px;
+  border-radius: 3px;
+  transition: all 0.15s;
+}
+
+.breadcrumb-text.clickable {
+  cursor: pointer;
+  color: #409eff;
+}
+
+.breadcrumb-text.clickable:hover {
+  background: rgba(64, 158, 255, 0.1);
+}
+
+.breadcrumb-separator {
+  margin: 0 4px;
+  color: #c0c4cc;
+  user-select: none;
+}
+
 .custom-table-container {
+  position: relative;
   overflow-y: auto;
   border: 1px solid rgba(0, 0, 0, 0.07);
   border-radius: 8px;
@@ -788,6 +949,11 @@ const applySorting = (prop: string, order: string) => {
   color: #409eff;
 }
 
+.action-menu-item-danger:hover {
+  background-color: rgba(245, 108, 108, 0.08);
+  color: #f56c6c;
+}
+
 .sortable {
   cursor: pointer;
 }
@@ -911,6 +1077,8 @@ const applySorting = (prop: string, order: string) => {
 
 :deep(.path-group .path-input .el-input__wrapper) {
   border-radius: 4px 0 0 4px;
+  min-height: 32px;
+  box-sizing: border-box;
 }
 
 .path-open-btn {
@@ -921,6 +1089,11 @@ const applySorting = (prop: string, order: string) => {
 .search-input {
   width: 200px;
   flex-shrink: 0;
+}
+
+:deep(.search-input .el-input__wrapper) {
+  min-height: 32px;
+  box-sizing: border-box;
 }
 
 .toolbar-icon-btn {
