@@ -1,7 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { readTextFile, writeTextFile, exists, BaseDirectory } from '@tauri-apps/plugin-fs'
-import { open as shellOpen } from '@tauri-apps/plugin-shell'
 import { invoke } from '@tauri-apps/api/core'
 import { pinyin } from 'pinyin-pro'
 import Fuse from 'fuse.js'
@@ -195,7 +194,7 @@ export const useLauncherStore = defineStore('launcher', () => {
   }
 
   async function launch(shortcut: LocalShortcut) {
-    await shellOpen(shortcut.path)
+    await invoke('shell_open', { path: shortcut.path })
   }
 
   return {

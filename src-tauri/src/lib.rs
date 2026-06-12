@@ -53,6 +53,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             greet,
             open_launcher_window,
+            shell_open,
             my_custom_command,
             show_in_file_manager,
             list_desktop_launch_items,
@@ -131,6 +132,16 @@ pub fn run() {
         })
         .run(tauri::generate_context!())
         .expect("运行应用失败");
+}
+
+#[tauri::command]
+fn shell_open(path: String) -> Result<(), String> {
+    Command::new("cmd")
+        .creation_flags(0x08000000)
+        .args(["/C", "start", "", &path])
+        .spawn()
+        .map_err(|e| e.to_string())?;
+    Ok(())
 }
 
 #[tauri::command]
