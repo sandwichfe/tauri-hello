@@ -36,7 +36,7 @@
         "url": "index.html#/launcher",
         "title": "Launcher",
         "width": 720,
-        "height": 82,
+        "height": 60,
         "resizable": false,
         "decorations": false,
         "visible": false,

@@ -10,7 +10,7 @@ const inputRef = ref<HTMLInputElement | null>(null)
 const selectedIndex = ref(0)
 
 const WINDOW_WIDTH = 720
-const SEARCH_BOX_HEIGHT = 82
+const SEARCH_BOX_HEIGHT = 60
 const ITEM_HEIGHT = 62
 const RESULT_PADDING = 17
 const MAX_VISIBLE_ITEMS = 7
@@ -49,6 +49,12 @@ watch(
 function focusSearch() {
   inputRef.value?.focus()
   inputRef.value?.select()
+}
+
+function startDrag(event: MouseEvent) {
+  if (event.buttons === 1) {
+    getCurrentWindow().startDragging()
+  }
 }
 
 function getIcon(type: LocalShortcut['type']) {
@@ -107,7 +113,7 @@ async function handleKeydown(event: KeyboardEvent) {
 <template>
   <main class="launcher-window" @click="focusSearch">
     <section class="launcher-panel">
-      <div class="search-box" data-tauri-drag-region>
+      <div class="search-box" @mousedown="startDrag">
         <el-icon class="search-icon" :size="25">
           <Search />
         </el-icon>
@@ -202,7 +208,6 @@ async function handleKeydown(event: KeyboardEvent) {
   font-weight: 300;
   line-height: 1.3;
   letter-spacing: 0;
-  -webkit-app-region: no-drag;
 }
 
 .search-input::placeholder {
