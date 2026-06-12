@@ -153,10 +153,11 @@ async function handleKeydown(event: KeyboardEvent) {
 
 <style scoped>
 .launcher-window {
-  width: 100vw;
-  height: 100vh;
+  width: 100%;
+  height: 100%;
   padding: 0;
   box-sizing: border-box;
+  overflow: hidden;
   background: transparent;
   color: var(--launcher-text);
   font-family:
@@ -299,6 +300,7 @@ async function handleKeydown(event: KeyboardEvent) {
 :global(#app) {
   margin: 0;
   padding: 0;
+  overflow: hidden;
   background: transparent;
 }
 

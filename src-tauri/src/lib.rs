@@ -24,7 +24,20 @@ fn greet(name: &str) -> String {
 fn open_launcher_window(app: AppHandle) -> Result<(), String> {
     let window = app.get_webview_window("launcher").ok_or("launcher window not found")?;
     window.show().map_err(|e| e.to_string())?;
-    window.center().map_err(|e| e.to_string())?;
+
+    if let Ok(monitor) = window.current_monitor() {
+        if let Some(monitor) = monitor {
+            let screen_size = monitor.size();
+            let scale = monitor.scale_factor();
+            let win_width = 720.0;
+            let x = (screen_size.width as f64 / scale - win_width) / 2.0;
+            let y = screen_size.height as f64 / scale * 0.25;
+            window
+                .set_position(tauri::LogicalPosition::new(x, y))
+                .map_err(|e| e.to_string())?;
+        }
+    }
+
     window.set_focus().map_err(|e| e.to_string())?;
     Ok(())
 }
