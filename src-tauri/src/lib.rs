@@ -6,6 +6,8 @@ mod file_system;
 use file_system::{move_to_recycle_bin, read_directory};
 use serde::Serialize;
 use tauri::{AppHandle, Manager};
+use tauri::menu::{Menu, MenuItem};
+use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -59,35 +61,58 @@ pub fn run() {
             convert_video_ffmpeg
         ])
         .setup(|app| {
-            // 先获取启动画面窗口，确保它优先显示
             let splashscreen = app.get_webview_window("splashscreen").expect("无法获取启动窗口");
             let main_window = app.get_webview_window("main").expect("无法获取主窗口");
-            
-            // 确保启动画面立即显示并置于前台
+
             splashscreen.show().unwrap();
             splashscreen.set_focus().unwrap();
-            
-            // 确保主窗口初始隐藏
             main_window.hide().unwrap();
-            
-            // 延迟关闭启动画面并显示主窗口
+
             std::thread::spawn(move || {
-                // 等待启动画面完全加载并显示
                 std::thread::sleep(std::time::Duration::from_millis(600));
-                
-                // 确保启动画面保持在前台
                 splashscreen.set_focus().unwrap();
-                
-                // 模拟资源加载过程 - 给主窗口更多时间准备内容
                 std::thread::sleep(std::time::Duration::from_millis(100));
-                
-                // 关闭启动画面并显示主窗口
                 splashscreen.close().unwrap();
                 main_window.show().unwrap();
                 main_window.set_focus().unwrap();
             });
-            
-            
+
+            let show_item = MenuItem::with_id(app, "show", "显示", true, None::<&str>)?;
+            let quit_item = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;
+            let menu = Menu::with_items(app, &[&show_item, &quit_item])?;
+
+            TrayIconBuilder::new()
+                .icon(app.default_window_icon().unwrap().clone())
+                .menu(&menu)
+                .tooltip("sandwich-littletool")
+                .on_menu_event(|app, event| match event.id.as_ref() {
+                    "show" => {
+                        if let Some(window) = app.get_webview_window("main") {
+                            let _ = window.show();
+                            let _ = window.set_focus();
+                        }
+                    }
+                    "quit" => {
+                        app.exit(0);
+                    }
+                    _ => {}
+                })
+                .on_tray_icon_event(|tray, event| {
+                    if let TrayIconEvent::Click {
+                        button: MouseButton::Left,
+                        button_state: MouseButtonState::Up,
+                        ..
+                    } = event
+                    {
+                        let app = tray.app_handle();
+                        if let Some(window) = app.get_webview_window("main") {
+                            let _ = window.show();
+                            let _ = window.set_focus();
+                        }
+                    }
+                })
+                .build(app)?;
+
             Ok(())
         })
         .run(tauri::generate_context!())

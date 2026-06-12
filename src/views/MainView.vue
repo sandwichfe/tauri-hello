@@ -8,9 +8,6 @@ import LauncherView from './LauncherView.vue';
 <template>
   <main class="main-view">
     <el-tabs type="card" tab-position="top" class="main-tabs">
-      <el-tab-pane label="快捷启动">
-        <LauncherView />
-      </el-tab-pane>
 
       <el-tab-pane label="Git 代理管理">
         <GitProxyManager />
@@ -22,6 +19,10 @@ import LauncherView from './LauncherView.vue';
 
       <el-tab-pane label="视频转换">
         <VideoConverter />
+      </el-tab-pane>
+
+      <el-tab-pane label="快捷启动">
+        <LauncherView />
       </el-tab-pane>
     </el-tabs>
   </main>
