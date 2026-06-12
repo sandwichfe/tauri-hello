@@ -35,6 +35,12 @@ onMounted(async () => {
   }
   await nextTick()
   focusSearch()
+
+  const win = getCurrentWindow()
+  window.addEventListener('blur', () => {
+    store.searchQuery = ''
+    win.hide()
+  })
 })
 
 watch(
