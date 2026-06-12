@@ -43,6 +43,12 @@ onMounted(async () => {
     store.searchQuery = ''
     win.hide()
   })
+
+  await win.onFocusChanged(({ payload: focused }) => {
+    if (focused) {
+      focusSearch()
+    }
+  })
 })
 
 watch(

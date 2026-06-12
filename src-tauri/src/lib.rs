@@ -82,7 +82,7 @@ pub fn run() {
             let launcher_item = MenuItem::with_id(app, "launcher", "搜索窗口", true, None::<&str>)?;
             let show_item = MenuItem::with_id(app, "show", "显示", true, None::<&str>)?;
             let quit_item = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;
-            let menu = Menu::with_items(app, &[&show_item, &launcher_item, &quit_item])?;
+            let menu = Menu::with_items(app, &[&launcher_item,&show_item,  &quit_item])?;
 
             TrayIconBuilder::new()
                 .icon(app.default_window_icon().unwrap().clone())
@@ -135,6 +135,11 @@ pub fn run() {
             if window.label() == "main" {
                 if let WindowEvent::CloseRequested { api, .. } = event {
                     api.prevent_close();
+                    let _ = window.hide();
+                }
+            }
+            if window.label() == "launcher" {
+                if let WindowEvent::Focused(false) = event {
                     let _ = window.hide();
                 }
             }
