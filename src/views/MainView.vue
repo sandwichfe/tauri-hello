@@ -2,11 +2,16 @@
 import GitProxyManager from './GitProxyManager.vue';
 import ResourceManager from './ResourceManager.vue';
 import VideoConverter from './VideoConverter.vue';
+import LauncherView from './LauncherView.vue';
 </script>
 
 <template>
   <main class="main-view">
     <el-tabs type="card" tab-position="top" class="main-tabs">
+      <el-tab-pane label="快捷启动">
+        <LauncherView />
+      </el-tab-pane>
+
       <el-tab-pane label="Git 代理管理">
         <GitProxyManager />
       </el-tab-pane>

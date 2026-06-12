@@ -4,11 +4,29 @@ use std::path::PathBuf;
 use std::process::{Command, Stdio};
 mod file_system;
 use file_system::{move_to_recycle_bin, read_directory};
+use serde::Serialize;
 use tauri::{AppHandle, Manager};
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct DesktopLaunchItem {
+    name: String,
+    path: String,
+    is_directory: bool,
+}
 
 #[tauri::command]
 fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
+}
+
+#[tauri::command]
+fn open_launcher_window(app: AppHandle) -> Result<(), String> {
+    let window = app.get_webview_window("launcher").ok_or("launcher window not found")?;
+    window.show().map_err(|e| e.to_string())?;
+    window.center().map_err(|e| e.to_string())?;
+    window.set_focus().map_err(|e| e.to_string())?;
+    Ok(())
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -19,8 +37,10 @@ pub fn run() {
         .plugin(tauri_plugin_fs::init())
         .invoke_handler(tauri::generate_handler![
             greet,
+            open_launcher_window,
             my_custom_command,
             show_in_file_manager,
+            list_desktop_launch_items,
             read_directory,
             move_to_recycle_bin,
             convert_video_ffmpeg
@@ -104,6 +124,64 @@ fn show_in_file_manager(path: String) -> Result<(), String> {
         .map_err(|e| e.to_string())?;
 
     Ok(())
+}
+
+#[tauri::command]
+fn list_desktop_launch_items() -> Result<Vec<DesktopLaunchItem>, String> {
+    let mut desktop_dirs: Vec<PathBuf> = Vec::new();
+
+    if let Ok(user_profile) = std::env::var("USERPROFILE") {
+        desktop_dirs.push(PathBuf::from(user_profile).join("Desktop"));
+    }
+
+    if let Ok(one_drive) = std::env::var("OneDrive") {
+        desktop_dirs.push(PathBuf::from(one_drive).join("Desktop"));
+    }
+
+    if let Ok(public_dir) = std::env::var("PUBLIC") {
+        desktop_dirs.push(PathBuf::from(public_dir).join("Desktop"));
+    }
+
+    let mut items: Vec<DesktopLaunchItem> = Vec::new();
+
+    for desktop_dir in desktop_dirs {
+        if !desktop_dir.is_dir() {
+            continue;
+        }
+
+        let entries = std::fs::read_dir(&desktop_dir).map_err(|e| e.to_string())?;
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if !path.is_file() || !is_launch_file(&path) {
+                continue;
+            }
+
+            let Some(file_name) = path.file_name().and_then(|name| name.to_str()) else {
+                continue;
+            };
+
+            items.push(DesktopLaunchItem {
+                name: file_name.to_string(),
+                path: path.to_string_lossy().to_string(),
+                is_directory: false,
+            });
+        }
+    }
+
+    items.sort_by_key(|item| item.name.to_lowercase());
+    items.dedup_by(|a, b| a.path.eq_ignore_ascii_case(&b.path));
+    Ok(items)
+}
+
+fn is_launch_file(path: &std::path::Path) -> bool {
+    let Some(ext) = path.extension().and_then(|ext| ext.to_str()) else {
+        return false;
+    };
+
+    matches!(
+        ext.to_ascii_lowercase().as_str(),
+        "lnk" | "exe" | "bat" | "cmd" | "url" | "appref-ms"
+    )
 }
 
 #[tauri::command]

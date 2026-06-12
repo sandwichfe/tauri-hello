@@ -4,7 +4,8 @@
   "description": "Capability for the main window",
   "windows": [
     "main",
-    "file-classifier"
+    "file-classifier",
+    "launcher"
   ],
   "permissions": [
     {
@@ -23,6 +24,7 @@
     "core:window:allow-create",
     "core:window:allow-start-dragging",
     "core:window:allow-set-focus",
+    "core:window:allow-set-size",
     "core:window:allow-set-enabled",
     "core:window:allow-set-visible-on-all-workspaces",
     "core:window:allow-hide",

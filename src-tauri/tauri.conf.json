@@ -30,6 +30,19 @@
         "resizable": false,
         "transparent": false,
         "center": true
+      },
+      {
+        "label": "launcher",
+        "url": "index.html#/launcher",
+        "title": "Launcher",
+        "width": 720,
+        "height": 82,
+        "resizable": false,
+        "decorations": false,
+        "visible": false,
+        "transparent": true,
+        "skipTaskbar": true,
+        "center": true
       }
     ],
     "security": {

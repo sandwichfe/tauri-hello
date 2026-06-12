@@ -1,5 +1,7 @@
 import { createApp } from "vue";
 import App from "./App.vue";
+import { isTauri } from '@tauri-apps/api/core'
+import { getCurrentWindow } from '@tauri-apps/api/window'
 
 import ElementPlus from 'element-plus'
 import 'element-plus/dist/index.css'
@@ -25,8 +27,18 @@ app.use(pinia);
 // 使用路由
 app.use(router);
 
+const currentWindowLabel = isTauri() ? getCurrentWindow().label : 'main'
+const isLauncherRoute = window.location.hash.startsWith('#/launcher')
+const isLauncherWindow = currentWindowLabel === 'launcher' || isLauncherRoute
+
 // 在挂载应用前先预加载资源
 async function initApp() {
+  if (isLauncherWindow) {
+    await router.replace('/launcher')
+    app.mount('#app')
+    return
+  }
+
   // 显示加载状态
   openLoading();
   
