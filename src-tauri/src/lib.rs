@@ -78,8 +78,9 @@ pub fn run() {
             });
 
             let show_item = MenuItem::with_id(app, "show", "显示", true, None::<&str>)?;
+            let launcher_item = MenuItem::with_id(app, "launcher", "搜索窗口", true, None::<&str>)?;
             let quit_item = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;
-            let menu = Menu::with_items(app, &[&show_item, &quit_item])?;
+            let menu = Menu::with_items(app, &[&show_item, &launcher_item, &quit_item])?;
 
             TrayIconBuilder::new()
                 .icon(app.default_window_icon().unwrap().clone())
@@ -89,6 +90,19 @@ pub fn run() {
                     "show" => {
                         if let Some(window) = app.get_webview_window("main") {
                             let _ = window.show();
+                            let _ = window.set_focus();
+                        }
+                    }
+                    "launcher" => {
+                        if let Some(window) = app.get_webview_window("launcher") {
+                            let _ = window.show();
+                            if let Ok(Some(monitor)) = window.current_monitor() {
+                                let screen_size = monitor.size();
+                                let scale = monitor.scale_factor();
+                                let x = (screen_size.width as f64 / scale - 720.0) / 2.0;
+                                let y = screen_size.height as f64 / scale * 0.25;
+                                let _ = window.set_position(tauri::LogicalPosition::new(x, y));
+                            }
                             let _ = window.set_focus();
                         }
                     }
