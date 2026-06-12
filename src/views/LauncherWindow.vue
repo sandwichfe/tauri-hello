@@ -7,6 +7,7 @@ import type { LocalShortcut } from '@/types/launcher'
 
 const store = useLauncherStore()
 const inputRef = ref<HTMLInputElement | null>(null)
+const resultListRef = ref<HTMLElement | null>(null)
 const selectedIndex = ref(0)
 
 const WINDOW_WIDTH = 720
@@ -72,7 +73,13 @@ function getIcon(type: LocalShortcut['type']) {
 function moveSelection(step: number) {
   const count = visibleResults.value.length
   if (count === 0) return
-  selectedIndex.value = (selectedIndex.value + step + count) % count
+  const next = selectedIndex.value + step
+  if (next < 0 || next >= count) return
+  selectedIndex.value = next
+  nextTick(() => {
+    const items = resultListRef.value?.querySelectorAll('.result-item')
+    items?.[selectedIndex.value]?.scrollIntoView({ block: 'nearest' })
+  })
 }
 
 async function launchItem(item: LocalShortcut) {
@@ -134,7 +141,7 @@ async function handleKeydown(event: KeyboardEvent) {
         />
       </div>
 
-      <div v-if="hasQuery" class="result-list">
+      <div v-if="hasQuery" ref="resultListRef" class="result-list">
         <button
           v-for="(item, index) in visibleResults"
           :key="item.id"
