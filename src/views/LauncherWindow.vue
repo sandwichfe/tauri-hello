@@ -8,13 +8,14 @@ import type { LocalShortcut } from '@/types/launcher'
 const store = useLauncherStore()
 const inputRef = ref<HTMLInputElement | null>(null)
 const resultListRef = ref<HTMLElement | null>(null)
+const panelRef = ref<HTMLElement | null>(null)
 const selectedIndex = ref(0)
 
 const WINDOW_WIDTH = 720
 const SEARCH_BOX_HEIGHT = 60
 const ITEM_HEIGHT = 62
-const RESULT_PADDING = 17
-const MAX_VISIBLE_ITEMS = 7
+const RESULT_LIST_PADDING = 17
+const RESULT_LIST_MAX_HEIGHT = 436
 
 const visibleResults = computed(() => store.searchResults.slice(0, 24))
 const hasQuery = computed(() => store.searchQuery.trim().length > 0)
@@ -25,9 +26,9 @@ async function resizeWindow() {
     await win.setSize(new LogicalSize(WINDOW_WIDTH, SEARCH_BOX_HEIGHT))
     return
   }
-  const itemCount = Math.min(visibleResults.value.length, MAX_VISIBLE_ITEMS)
-  const height = SEARCH_BOX_HEIGHT + RESULT_PADDING + itemCount * ITEM_HEIGHT
-  await win.setSize(new LogicalSize(WINDOW_WIDTH, height))
+  const contentHeight = RESULT_LIST_PADDING + visibleResults.value.length * ITEM_HEIGHT
+  const resultHeight = Math.min(contentHeight, RESULT_LIST_MAX_HEIGHT)
+  await win.setSize(new LogicalSize(WINDOW_WIDTH, SEARCH_BOX_HEIGHT + resultHeight))
 }
 
 onMounted(async () => {
@@ -126,7 +127,7 @@ async function handleKeydown(event: KeyboardEvent) {
 
 <template>
   <main class="launcher-window" @click="focusSearch">
-    <section class="launcher-panel">
+    <section ref="panelRef" class="launcher-panel">
       <div class="search-box" @mousedown="startDrag">
         <el-icon class="search-icon" :size="25">
           <Search />
@@ -186,7 +187,6 @@ async function handleKeydown(event: KeyboardEvent) {
 
 .launcher-panel {
   width: 100%;
-  max-height: 100%;
   overflow: hidden;
   border: 1px solid var(--launcher-border);
   border-radius: 10px;
