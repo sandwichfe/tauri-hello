@@ -224,7 +224,9 @@ fn list_desktop_launch_items() -> Result<Vec<DesktopLaunchItem>, String> {
         let entries = std::fs::read_dir(&desktop_dir).map_err(|e| e.to_string())?;
         for entry in entries.flatten() {
             let path = entry.path();
-            if !path.is_file() || !is_launch_file(&path) {
+            let is_dir = path.is_dir();
+
+            if !is_dir && !is_launch_file(&path) {
                 continue;
             }
 
@@ -235,7 +237,7 @@ fn list_desktop_launch_items() -> Result<Vec<DesktopLaunchItem>, String> {
             items.push(DesktopLaunchItem {
                 name: file_name.to_string(),
                 path: path.to_string_lossy().to_string(),
-                is_directory: false,
+                is_directory: is_dir,
             });
         }
     }
