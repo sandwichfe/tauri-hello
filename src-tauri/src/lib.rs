@@ -8,6 +8,7 @@ use serde::Serialize;
 use tauri::{AppHandle, Manager};
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
+use tauri::WindowEvent;
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -78,8 +79,8 @@ pub fn run() {
                 main_window.set_focus().unwrap();
             });
 
-            let show_item = MenuItem::with_id(app, "show", "显示", true, None::<&str>)?;
             let launcher_item = MenuItem::with_id(app, "launcher", "搜索窗口", true, None::<&str>)?;
+            let show_item = MenuItem::with_id(app, "show", "显示", true, None::<&str>)?;
             let quit_item = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;
             let menu = Menu::with_items(app, &[&show_item, &launcher_item, &quit_item])?;
 
@@ -129,6 +130,14 @@ pub fn run() {
                 .build(app)?;
 
             Ok(())
+        })
+        .on_window_event(|window, event| {
+            if window.label() == "main" {
+                if let WindowEvent::CloseRequested { api, .. } = event {
+                    api.prevent_close();
+                    let _ = window.hide();
+                }
+            }
         })
         .run(tauri::generate_context!())
         .expect("运行应用失败");

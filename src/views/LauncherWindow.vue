@@ -71,6 +71,7 @@ function moveSelection(step: number) {
 
 async function launchItem(item: LocalShortcut) {
   await store.launch(item)
+  store.searchQuery = ''
   await getCurrentWindow().hide()
 }
 
