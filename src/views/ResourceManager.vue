@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // 依赖与组件导入
-import {computed, nextTick, onMounted, ref} from 'vue';
+import {computed, nextTick, onMounted, onUnmounted, ref} from 'vue';
 import {ElMessage, ElMessageBox} from 'element-plus';
 import {ArrowLeft, Document, Folder, FolderOpened, Headset, MoreFilled, Picture, Refresh, Search, VideoCamera} from '@element-plus/icons-vue';
 import {convertFileSrc, invoke} from '@tauri-apps/api/core';
@@ -9,7 +9,7 @@ import {BaseDirectory, exists, mkdir, readTextFile, writeTextFile} from '@tauri-
 import VideoPreview from '../components/VideoPreview.vue';
 import ImagePreview from '../components/ImagePreview.vue';
 import {closeLoading, openLoading} from '../utils/loadingUtil';
-import {Window} from '@tauri-apps/api/window';
+import {getCurrentWindow, Window} from '@tauri-apps/api/window';
 import {Webview} from '@tauri-apps/api/webview';
 
 // 文件项结构定义
@@ -60,6 +60,18 @@ const actionMenuVisible = ref(false);
 const actionMenuPosition = ref({x: 0, y: 0});
 const actionRow = ref<FileItem | null>(null);
 
+// 导航栏与工具栏高度（用于高度计算）
+const tabsHeight = ref(42.8);
+const toolbarHeight = ref(32);
+
+// 窗口尺寸与滚动区域高度计算
+const scaleFactor = ref(1);
+const windowsHeight = ref(0);
+const scrollbarHeight = computed(() => {
+  const height = (windowsHeight.value / scaleFactor.value) - tabsHeight.value - toolbarHeight.value - 20 - 0.1;
+  return `${Math.max(0, height)}px`;
+});
+
 // 滚动组件引用与滚动位置存储
 const scrollRef = ref<any | null>(null);
 const scrollPositions = ref<Map<string, number>>(new Map());
@@ -100,6 +112,22 @@ const scrollToTop = () => {
     el.scrollTop = 0;
   }
 };
+
+
+
+
+// 计算滚动区域高度（读取窗口逻辑尺寸与缩放）
+const calculateScrollbarHeight = async () => {
+  const size = await getCurrentWindow().innerSize();
+  windowsHeight.value = size.height;
+  scaleFactor.value = await getCurrentWindow().scaleFactor();
+};
+
+// 监听窗口大小变化并更新高度
+const handleResize = () => {
+  calculateScrollbarHeight();
+};
+
 // 检查是否可以返回上一级
 const canGoBack = () => pathHistory.value.length > 0;
 
@@ -186,8 +214,8 @@ const formatFileSize = (size: number) => {
 const filteredFileList = computed(() => {
   const keyword = searchKeyword.value.trim().toLowerCase();
   return fileList.value.filter((item) =>
-    !HIDDEN_PATHS.includes(item.path) &&
-    (!keyword || item.name.toLowerCase().includes(keyword))
+      !HIDDEN_PATHS.includes(item.path) &&
+      (!keyword || item.name.toLowerCase().includes(keyword))
   );
 });
 
@@ -354,13 +382,13 @@ const handleViewDetail = (row: FileItem) => {
 const handleMoveToRecycleBin = async (row: FileItem) => {
   try {
     await ElMessageBox.confirm(
-      `确定将“${row.name}”移动到回收站吗？`,
-      '提示',
-      {
-        type: 'warning',
-        confirmButtonText: '确定',
-        cancelButtonText: '取消'
-      }
+        `确定将“${row.name}”移动到回收站吗？`,
+        '提示',
+        {
+          type: 'warning',
+          confirmButtonText: '确定',
+          cancelButtonText: '取消'
+        }
     );
   } catch {
     return;
@@ -485,7 +513,7 @@ const loadPathConfig = async (): Promise<{currentPath: string | null, sortColumn
   }
 };
 
-// 组件挂载：加载配置
+// 组件挂载：加载配置与尺寸计算
 onMounted(async () => {
   const {currentPath: savedPath, sortColumn: savedSortColumn, sortOrder: savedSortOrder} = await loadPathConfig();
   if (savedPath) {
@@ -493,6 +521,13 @@ onMounted(async () => {
     sortOrder.value = savedSortOrder;
     await openFolder(savedPath, false);
   }
+  await calculateScrollbarHeight();
+  window.addEventListener('resize', handleResize);
+});
+
+// 组件卸载：移除事件监听
+onUnmounted(() => {
+  window.removeEventListener('resize', handleResize);
 });
 
 // 应用排序：文件夹优先，其次按列与排序方向
@@ -539,14 +574,14 @@ const applySorting = (prop: string, order: string) => {
       <div class="path-group">
         <div v-if="currentPath && getBreadcrumbs.length > 0" class="breadcrumb-container">
           <span
-            v-for="(crumb, index) in getBreadcrumbs"
-            :key="crumb.path"
-            class="breadcrumb-item"
+              v-for="(crumb, index) in getBreadcrumbs"
+              :key="crumb.path"
+              class="breadcrumb-item"
           >
             <span
-              class="breadcrumb-text"
-              :class="{ 'clickable': index < getBreadcrumbs.length - 1 }"
-              @click="index < getBreadcrumbs.length - 1 && handleBreadcrumbClick(crumb.path)"
+                class="breadcrumb-text"
+                :class="{ 'clickable': index < getBreadcrumbs.length - 1 }"
+                @click="index < getBreadcrumbs.length - 1 && handleBreadcrumbClick(crumb.path)"
             >
               {{ crumb.name }}
             </span>
@@ -563,7 +598,7 @@ const applySorting = (prop: string, order: string) => {
       </el-input>
     </div>
 
-    <div class="custom-table-container" ref="scrollRef">
+    <div class="custom-table-container" :style="{ height: scrollbarHeight }" ref="scrollRef">
       <div v-if="isLoading" class="loading-overlay">
         <el-icon class="loading-spinner"><Refresh /></el-icon>
         <span>加载中...</span>
@@ -616,20 +651,20 @@ const applySorting = (prop: string, order: string) => {
 
     <VideoPreview v-model:visible="showVideoPreview" :video-url="currentVideoUrl"/>
     <ImagePreview
-      v-model:visible="showImagePreview"
-      :image-urls="currentImageUrl"
-      :image-names="currentImageNames"
-      :initial-index="currentIndex"
+        v-model:visible="showImagePreview"
+        :image-urls="currentImageUrl"
+        :image-names="currentImageNames"
+        :initial-index="currentIndex"
     />
     <div
-      v-if="actionMenuVisible"
-      class="action-menu-overlay"
-      @click="closeActionMenu"
+        v-if="actionMenuVisible"
+        class="action-menu-overlay"
+        @click="closeActionMenu"
     >
       <div
-        class="action-menu"
-        :style="{ top: actionMenuPosition.y + 'px', left: actionMenuPosition.x + 'px' }"
-        @click.stop
+          class="action-menu"
+          :style="{ top: actionMenuPosition.y + 'px', left: actionMenuPosition.x + 'px' }"
+          @click.stop
       >
         <div class="action-menu-item" @click="handleActionDetail">
           详情
@@ -646,9 +681,9 @@ const applySorting = (prop: string, order: string) => {
       </div>
     </div>
     <el-dialog
-      v-model="showFileDetail"
-      title="文件详情"
-      width="480px"
+        v-model="showFileDetail"
+        title="文件详情"
+        width="480px"
     >
       <div v-if="detailFile">
         <p>名称：{{ detailFile.name }}</p>
@@ -658,10 +693,10 @@ const applySorting = (prop: string, order: string) => {
         <div class="detail-path-row">
           <span class="detail-path-text">路径：{{ detailFile.path }}</span>
           <el-button
-            link
-            type="primary"
-            size="small"
-            @click="handleCopyPath"
+              link
+              type="primary"
+              size="small"
+              @click="handleCopyPath"
           >复制
           </el-button>
         </div>
@@ -749,8 +784,6 @@ const applySorting = (prop: string, order: string) => {
 
 .custom-table-container {
   position: relative;
-  flex: 1;
-  min-height: 0;
   overflow-y: auto;
   border: 1px solid rgba(0, 0, 0, 0.07);
   border-radius: 8px;
@@ -988,7 +1021,6 @@ const applySorting = (prop: string, order: string) => {
 
 .resource-manager {
   height: 100%;
-  min-height: 0;
   display: flex;
   flex-direction: column;
 }
@@ -1081,7 +1113,6 @@ const applySorting = (prop: string, order: string) => {
 }
 
 .file-count {
-  flex-shrink: 0;
   line-height: 20px;
   padding-right: 5px;
   font-size: 13px;
